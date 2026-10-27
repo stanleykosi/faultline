@@ -4,6 +4,10 @@ Faultline is an AI case agent to guide investigations into changes in a web conv
 
 Faultline combines analytics, support records, and release evidence within a defined scope. It compares possible explanations for a metric change. Repeatable staging tests can reproduce a mechanism. Further tests can validate a proposed correction. The investigation report shows the evidence and the limits of each conclusion.
 
+## Configuration
+
+Use [`.env.example`](.env.example) for the essential credentials and installation settings. Put runtime values in `.env.local` or hosting secrets, and operator values in `.env.ops`. The source worksheet includes Zetaris, PostHog, and GitHub fields to enter through workspace Sources. Default ports, paths, limits, and feature flags are omitted; the hosting profiles supply their required non-secret settings.
+
 ## Deploy to Vercel
 
 1. Install the official Vercel CLI.

@@ -26,6 +26,7 @@ const approvedSecretSourceFiles=new Set(['packages/core/src/secrets/keyring.ts',
 const reviewedPrivateSourceExceptions=new Set([
  ...approvedSecretSourceFiles,
  'packages/core/src/reports/render.ts',
+ 'packages/core/src/reports/analytic-findings.ts',
  'packages/core/src/reports/service.ts',
  'packages/core/src/reports/zip.ts',
  'apps/web/src/features/providers/CredentialReplacement.tsx',

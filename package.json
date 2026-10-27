@@ -19,13 +19,10 @@
     "hosting:context": "node scripts/package-hosted-context.mjs",
     "hosting:vercel:prepare": "node scripts/prepare-vercel-supabase.mjs",
     "db:migrate:supabase": "node --import tsx --env-file-if-exists=.env.supabase.ops tools/ops/migrate-supabase.ts",
-    "test:hosting": "node --import tsx --test packages/core/src/storage/supabase-objects.test.ts packages/core/src/captures/direct-uploads.test.ts packages/database/src/identity-schema.test.ts apps/api/src/vercel-handler.test.ts scripts/initialize-vercel-runtime.test.mjs scripts/prepare-vercel-supabase.test.mjs",
     "start": "node --max-old-space-size=128 --env-file-if-exists=.env.local dist/server/apps/api/src/main.js",
     "worker": "node --max-old-space-size=128 --env-file-if-exists=.env.local scripts/start-worker.mjs",
     "db:migrate": "node --import tsx --env-file-if-exists=.env.ops tools/ops/migrate.ts",
     "bootstrap": "node --import tsx --env-file-if-exists=.env.ops tools/ops/bootstrap.ts",
-    "test": "pnpm test:components && pnpm test:web && pnpm test:ops",
-    "test:integration": "node --import tsx --env-file-if-exists=.env.local --env-file-if-exists=.env.ops --test tests/integration/*.test.ts",
     "db:roles": "node --import tsx --env-file-if-exists=.env.ops tools/ops/roles.ts",
     "db:local": "node tools/ops/local-database.mjs",
     "keys:init": "node --import tsx tools/ops/keyring.ts",
@@ -34,10 +31,9 @@
     "doctor": "node --import tsx --env-file-if-exists=.env.local --env-file-if-exists=.env.ops tools/ops/doctor.ts",
     "backup": "node --import tsx --env-file-if-exists=.env.local --env-file-if-exists=.env.ops tools/ops/backup.ts",
     "restore": "node --import tsx --env-file-if-exists=.env.local --env-file-if-exists=.env.ops tools/ops/restore.ts",
-    "test:components": "node --import tsx --test packages/core/src/**/*.test.ts packages/contracts/src/*.test.ts tests/integration/foundation-without-database.test.ts",
-    "test:web": "node scripts/test-web.mjs",
-    "test:ops": "node --import tsx --test tests/integration/backup-parts.test.ts tests/integration/backup-sql.test.ts tests/integration/backup-envelope.test.ts tests/integration/restore-database-config.test.ts tests/integration/recovery-capacity.test.ts tests/integration/export-diagnostics.test.ts tests/release-integrity.test.mjs packages/database/src/warm-pool.test.ts tools/ops/key-maintenance.test.ts tools/ops/key-maintenance-checkpoint.test.ts",
-    "deploy:vercel": "node scripts/deploy-vercel.mjs"
+    "deploy:vercel": "node scripts/deploy-vercel.mjs",
+    "test": "node scripts/test.mjs",
+    "test:integration": "node scripts/test.mjs --integration"
   },
   "packageManager": "pnpm@9.15.1",
   "dependencies": {

@@ -4,7 +4,7 @@ import {gzipSync} from 'node:zlib';
 import {byteHash} from '../../canonical.js';
 import {PostHogExportClient, parsePostHogManifest, type ExportDeclaration, type PostHogConfig} from './index.js';
 import {ConnectorError, type SafeHttp, type WireResponse} from '../wire.js';
-import type {FaultlineCoverageDeclaration} from '../../../../contracts/src/generated.js';
+import {type FaultlineCoverageDeclaration} from '../../../../contracts/src/generated.js';
 
 // Unit wire fixtures only; these HTTP responses are not live provider evidence.
 const run = '10000000-0000-4000-8000-000000000001', fileA = '20000000-0000-4000-8000-000000000001', fileB = '20000000-0000-4000-8000-000000000002';

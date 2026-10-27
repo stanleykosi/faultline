@@ -5,8 +5,8 @@ import path from 'node:path';
 import {randomBytes, randomUUID} from 'node:crypto';
 import {byteHash, hash, now} from '../canonical.js';
 import {DomainError} from '../errors.js';
-import {admitFixtureReceipt, authenticateValue, authorizeFixturePlan, evaluateFixtureVerification, protectedFixtureOracle, validateFixturePlan, type Arm, type CurrentVerificationBinding, type DeploymentReceipt, type FixtureAdmissionExpectation, type FixtureRunReceipt} from './fixture.js';
-import type {FaultlineBrowserPlan, FaultlineObservation} from '../../../contracts/src/generated.js';
+import {admitFixtureReceipt, authenticateValue, authorizeFixturePlan, evaluateFixtureVerification, protectedFixtureOracle, validateFixturePlan, type CurrentVerificationBinding, type DeploymentReceipt, type FixtureAdmissionExpectation, type FixtureRunReceipt} from './fixture.js';
+import {type FaultlineObservation} from '../../../contracts/src/generated.js';
 
 // Explicit unit-test signing authority. These synthetic records are not browser execution evidence.
 const secret = randomBytes(32), digest = (value: string) => hash({fixture_unit_input: value});

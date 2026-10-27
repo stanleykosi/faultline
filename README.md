@@ -42,11 +42,23 @@ For an existing PostgreSQL installation, use `config/runtime.env.example` and `c
 ```sh
 pnpm typecheck
 pnpm build
-pnpm test
-pnpm test:hosting
 ```
 
-Reusable database integration tests use `pnpm test:integration` with an isolated PostgreSQL installation and private configuration. Browser and live integration tests require their configured services and approved targets.
+## Tests
+
+```sh
+pnpm test
+```
+
+The default suite covers the agent, metrics, imports, evidence, permissions, reports, recovery and UI behavior. Related checks share feature-level suites and fixtures. It uses synthetic data and requires no database, browser or external account.
+
+```sh
+pnpm test:integration
+```
+
+Database checks run sequentially against an initialized, disposable local PostgreSQL installation. Configure its restricted roles and private `.env.local`/`.env.ops` files first. Missing configuration fails before tests run.
+
+Use `pnpm run test --suite=browser` for the controlled browser fixtures, or `pnpm run test --suite=hosting` for deployment packaging and private runtime checks. Browser fixtures use Microsoft Edge on Windows and Chromium elsewhere, through Playwright. Signup, Supabase and recovery rehearsals are separate opt-in profiles in the same runner; they require their specific setup.
 
 ## Source layout
 

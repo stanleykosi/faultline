@@ -3,27 +3,53 @@ import assert from 'node:assert/strict';
 import {createHash, createHmac} from 'node:crypto';
 import {DomainError} from '../errors.js';
 import {REDACTION_POLICY_VERSION, redactApprovedText, type ApprovedTextRedactionInput} from './redaction.js';
+import {sessionPseudonym, pseudonymizeRecords} from './identity.js';
 
+// redaction
 const key = Buffer.alloc(32, 0x73);
 const wid = '11111111-1111-4111-8111-111111111111', cid = '22222222-2222-4222-8222-222222222222';
 const input = (text: string): ApprovedTextRedactionInput => ({text, workspace_id: wid, case_id: cid, policy_version: REDACTION_POLICY_VERSION, key});
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 const code = (expected: string) => (error: unknown) => error instanceof DomainError && error.code === expected;
 
-test('J022A fixed policy removes independently authored contact and labelled secrets without returning matched plaintext', () => {
+test("fixed redaction removes contact and secret forms while preserving ordinary text", () => {
+ // J022A fixed policy removes independently authored contact and labelled secrets without returning matched plaintext
+ {
   const original = 'Résumé customer customer@example.test\nAuthorization: Bearer low_entropy_123\npassword = "hunter2"; token=abc; api_key: "fixture-key"; Phone: +234 803 123 4567. Checkout failed.';
-  const email = '[EMAIL_' + createHmac('sha256', key).update(JSON.stringify(['faultline.redaction.email.v1', REDACTION_POLICY_VERSION, wid, cid, 'customer@example.test'])).digest('hex') + ']';
-  const expected = `Résumé customer ${email}\nAuthorization: [REDACTED_SECRET]\npassword = "[REDACTED_SECRET]"; token=[REDACTED_SECRET]; api_key: "[REDACTED_SECRET]"; Phone: [REDACTED_PHONE]. Checkout failed.`;
-  const result = redactApprovedText(input(original));
-  assert.equal(result.text, expected);
-  assert.deepEqual(result.counts, {emails: 1, secrets: 4, phones: 1});
-  assert.equal(result.policy_version, 'contact-secrets-v1'); assert.equal(result.pseudonym_scope, 'workspace_case');
-  assert.equal(result.input_hash, createHmac('sha256', key).update(JSON.stringify(['faultline.redaction.input.v1', REDACTION_POLICY_VERSION, wid, cid, original])).digest('hex'));
-  assert.notEqual(result.input_hash, digest(original)); assert.equal(result.output_hash, digest(expected));
-  const receipt = JSON.stringify(result);
-  for (const secret of ['customer@example.test', 'low_entropy_123', 'hunter2', 'fixture-key', '+234 803 123 4567']) assert.equal(receipt.includes(secret), false);
-  assert.ok(result.limitations.some(value => value.includes('not guaranteed removed')));
-  assert.ok(result.limitations.some(value => value.includes('grants no access or declassification authority')));
+     const email = '[EMAIL_' + createHmac('sha256', key).update(JSON.stringify(['faultline.redaction.email.v1', REDACTION_POLICY_VERSION, wid, cid, 'customer@example.test'])).digest('hex') + ']';
+     const expected = `Résumé customer ${email}\nAuthorization: [REDACTED_SECRET]\npassword = "[REDACTED_SECRET]"; token=[REDACTED_SECRET]; api_key: "[REDACTED_SECRET]"; Phone: [REDACTED_PHONE]. Checkout failed.`;
+     const result = redactApprovedText(input(original));
+     assert.equal(result.text, expected);
+     assert.deepEqual(result.counts, {emails: 1, secrets: 4, phones: 1});
+     assert.equal(result.policy_version, 'contact-secrets-v1'); assert.equal(result.pseudonym_scope, 'workspace_case');
+     assert.equal(result.input_hash, createHmac('sha256', key).update(JSON.stringify(['faultline.redaction.input.v1', REDACTION_POLICY_VERSION, wid, cid, original])).digest('hex'));
+     assert.notEqual(result.input_hash, digest(original)); assert.equal(result.output_hash, digest(expected));
+     const receipt = JSON.stringify(result);
+     for (const secret of ['customer@example.test', 'low_entropy_123', 'hunter2', 'fixture-key', '+234 803 123 4567']) assert.equal(receipt.includes(secret), false);
+     assert.ok(result.limitations.some(value => value.includes('not guaranteed removed')));
+     assert.ok(result.limitations.some(value => value.includes('grants no access or declassification authority')));
+ }
+ // quoted, newline-separated, bearer, URL credential and recognized API key forms use fixed markers
+ {
+  const source = '"api_key" :\n"ab\\\"cd"\naccess-token = \'low value\'\nBearer\r\nshort_secret\nAuthorization = Basic Zml4dHVyZQ==\nhttps://example.test/?token=tiny&ordinary=kept\nsk-abcdefghijklmnop1234\nghp_abcdefghijklmnopqrst1234\npassword="unterminated';
+     const result = redactApprovedText(input(source));
+     assert.equal(result.text, '"api_key" :\n"[REDACTED_SECRET]"\naccess-token = \'[REDACTED_SECRET]\'\nBearer [REDACTED_SECRET]\nAuthorization = [REDACTED_SECRET]\nhttps://example.test/?token=[REDACTED_SECRET]&ordinary=kept\n[REDACTED_SECRET]\n[REDACTED_SECRET]\npassword="[REDACTED_SECRET]"');
+     assert.deepEqual(result.counts, {emails: 0, secrets: 8, phones: 0});
+     for (const secret of ['short_secret', 'Zml4dHVyZQ==', 'low value', 'abcdefghijklmnop1234', 'unterminated']) assert.equal(JSON.stringify(result).includes(secret), false);
+     const repeated = redactApprovedText(input(result.text));
+     assert.equal(repeated.text, result.text); assert.deepEqual(repeated.counts, {emails: 0, secrets: 0, phones: 0});
+ }
+ // finite phone formats are removed while ordinary Unicode, IDs, dates and untrusted instructions remain data
+ {
+  const unchanged = 'Checkout café 👩🏾‍💻 成功. Order1234567890 at2026-10-12T10:00:00+01:00; token count4; password reset help; sk-short; email word; contact=user-at-example.test. <script>globalThis.REDACTION_TEST_EXECUTED=true</script>';
+     const scope = globalThis as typeof globalThis & {REDACTION_TEST_EXECUTED?: boolean};
+     const before = scope.REDACTION_TEST_EXECUTED;
+     const safe = redactApprovedText(input(unchanged));
+     assert.equal(safe.text, unchanged); assert.deepEqual(safe.counts, {emails: 0, secrets: 0, phones: 0}); assert.equal(scope.REDACTION_TEST_EXECUTED, before);
+     const phones = redactApprovedText(input('+234 803 123 4567; (202) 555-0100; 202-555-0101.'));
+     assert.equal(phones.text, '[REDACTED_PHONE]; [REDACTED_PHONE]; [REDACTED_PHONE].'); assert.deepEqual(phones.counts, {emails: 0, secrets: 0, phones: 3});
+     assert.equal(redactApprovedText(input('token=""; password=\'\'')).text, 'token=""; password=\'\'');
+ }
 });
 
 test('opaque exact email joins are stable only under the same workspace, case, policy and retained key', () => {
@@ -41,27 +67,6 @@ test('opaque exact email joins are stable only under the same workspace, case, p
   assert.equal(lowEntropy.text, 'token=[REDACTED_SECRET]'); assert.notEqual(lowEntropy.input_hash, digest('token=1'));
 });
 
-test('quoted, newline-separated, bearer, URL credential and recognized API key forms use fixed markers', () => {
-  const source = '"api_key" :\n"ab\\\"cd"\naccess-token = \'low value\'\nBearer\r\nshort_secret\nAuthorization = Basic Zml4dHVyZQ==\nhttps://example.test/?token=tiny&ordinary=kept\nsk-abcdefghijklmnop1234\nghp_abcdefghijklmnopqrst1234\npassword="unterminated';
-  const result = redactApprovedText(input(source));
-  assert.equal(result.text, '"api_key" :\n"[REDACTED_SECRET]"\naccess-token = \'[REDACTED_SECRET]\'\nBearer [REDACTED_SECRET]\nAuthorization = [REDACTED_SECRET]\nhttps://example.test/?token=[REDACTED_SECRET]&ordinary=kept\n[REDACTED_SECRET]\n[REDACTED_SECRET]\npassword="[REDACTED_SECRET]"');
-  assert.deepEqual(result.counts, {emails: 0, secrets: 8, phones: 0});
-  for (const secret of ['short_secret', 'Zml4dHVyZQ==', 'low value', 'abcdefghijklmnop1234', 'unterminated']) assert.equal(JSON.stringify(result).includes(secret), false);
-  const repeated = redactApprovedText(input(result.text));
-  assert.equal(repeated.text, result.text); assert.deepEqual(repeated.counts, {emails: 0, secrets: 0, phones: 0});
-});
-
-test('finite phone formats are removed while ordinary Unicode, IDs, dates and untrusted instructions remain data', () => {
-  const unchanged = 'Checkout café 👩🏾‍💻 成功. Order1234567890 at2026-10-12T10:00:00+01:00; token count4; password reset help; sk-short; email word; contact=user-at-example.test. <script>globalThis.REDACTION_TEST_EXECUTED=true</script>';
-  const scope = globalThis as typeof globalThis & {REDACTION_TEST_EXECUTED?: boolean};
-  const before = scope.REDACTION_TEST_EXECUTED;
-  const safe = redactApprovedText(input(unchanged));
-  assert.equal(safe.text, unchanged); assert.deepEqual(safe.counts, {emails: 0, secrets: 0, phones: 0}); assert.equal(scope.REDACTION_TEST_EXECUTED, before);
-  const phones = redactApprovedText(input('+234 803 123 4567; (202) 555-0100; 202-555-0101.'));
-  assert.equal(phones.text, '[REDACTED_PHONE]; [REDACTED_PHONE]; [REDACTED_PHONE].'); assert.deepEqual(phones.counts, {emails: 0, secrets: 0, phones: 3});
-  assert.equal(redactApprovedText(input('token=""; password=\'\'')).text, 'token=""; password=\'\'');
-});
-
 test('unsupported policy, unsafe scope/key/text and output expansion block without leaking or truncating input', () => {
   assert.throws(() => redactApprovedText({...input('unchanged'), policy_version: 'owner-review-v1'}), code('REDACTION_POLICY_UNSUPPORTED'));
   assert.throws(() => redactApprovedText({...input('unchanged'), key: Buffer.alloc(31)}), code('REDACTION_KEY_INVALID'));
@@ -72,4 +77,23 @@ test('unsupported policy, unsafe scope/key/text and output expansion block witho
   assert.throws(() => redactApprovedText(input('a@b.test '.repeat(120))), code('REDACTION_OUTPUT_LIMIT'));
   try {redactApprovedText({...input('DO_NOT_LEAK_ORIGINAL'), policy_version: 'unapproved'}); assert.fail('Unsupported policy must reject.');}
   catch (error) {assert.ok(error instanceof DomainError); assert.equal(JSON.stringify({message: error.message, code: error.code}).includes('DO_NOT_LEAK_ORIGINAL'), false);}
+});
+
+// identity
+test("session pseudonyms preserve only scoped joins and consume owned input buffers", () => {
+ // session pseudonyms join only within the pinned workspace/source policy and hide low-entropy identifiers
+ {
+  const key=Buffer.alloc(32,7),value=sessionPseudonym(key,'workspace-a','source-a','v1','person@example.test');assert.match(value,/^s_[a-f0-9]{64}$/);assert.equal(value,sessionPseudonym(key,'workspace-a','source-a','v1','person@example.test'));for(const fields of [['workspace-b','source-a','v1'],['workspace-a','source-b','v1'],['workspace-a','source-a','v2']])assert.notEqual(value,sessionPseudonym(key,...fields as [string,string,string],'person@example.test'));assert.throws(()=>sessionPseudonym(Buffer.alloc(31),'workspace-a','source-a','v1','person@example.test'));
+ }
+ // owned import buffers consume raw identities with the same finite canonical output as copy mode
+ {
+  const key=Buffer.alloc(32,7),raw=[{event_id:'e1',session_id:'basket',device:'mobile'},{event_id:'e2',session_id:'basket',device:'desktop'},{event_id:'e3',session_id:'other',device:'mobile'}];
+    const original=structuredClone(raw),copy=pseudonymizeRecords(key,'workspace-a','source-a','v1',raw);
+    assert.deepEqual(raw,original);assert.notEqual(copy,raw);
+    assert.equal(copy[0].session_id,copy[1].session_id);assert.notEqual(copy[0].session_id,copy[2].session_id);
+    assert(copy.every(e=>/^s_[a-f0-9]{64}$/.test(e.session_id)));assert.deepEqual(copy.map(e=>[e.event_id,e.device]),[['e1','mobile'],['e2','desktop'],['e3','mobile']]);
+    const owned=structuredClone(raw);assert.equal(pseudonymizeRecords(key,'workspace-a','source-a','v1',owned,true),owned);assert.deepEqual(owned,copy);
+    assert.notEqual(pseudonymizeRecords(key,'workspace-b','source-a','v1',raw)[0].session_id,copy[0].session_id);
+    assert.notEqual(pseudonymizeRecords(key,'workspace-a','source-b','v1',raw)[0].session_id,copy[0].session_id);
+ }
 });

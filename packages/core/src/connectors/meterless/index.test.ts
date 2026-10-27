@@ -2,13 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {
-  MeterlessInvestigationMemory,
-  investigationCapsuleHash,
-  isMeterlessDomainError,
-  type InvestigationCapsule,
-  type InvestigationCapsuleContent,
-} from './index.js';
+import {MeterlessInvestigationMemory, investigationCapsuleHash, isMeterlessDomainError, type InvestigationCapsule, type InvestigationCapsuleContent} from './index.js';
 import {HMEM} from './vendor/hmem/src/index.js';
 
 const T0 = Date.parse('2026-10-20T12:00:00.000Z');

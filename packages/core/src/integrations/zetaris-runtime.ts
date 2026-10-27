@@ -11,7 +11,7 @@ import {
   type ZetarisTemplateId,
   type ZetarisViewRole,
 } from '../connectors/zetaris/index.js';
-import {checkActive,ConnectorError,providerOrigin,type ExecutionControl} from '../connectors/wire.js';
+import {checkActive,ConnectorError,providerOrigin,containsProviderSecret,type ExecutionControl} from '../connectors/wire.js';
 
 const DIGEST=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/;
@@ -85,7 +85,7 @@ export interface ZetarisRuntimeAdapterFactory {
   approved_origin:string;
   contract_hash:string;
   probe(input:{credential:string;approved_origin:string;approved_account_scope:string;contract_hash:string},control?:ExecutionControl):Promise<ZetarisRuntimeProbe>;
-  createApi(input:{credential:string;approved_origin:string;approved_account_scope:string;contract_hash:string},control?:ExecutionControl):Promise<ZetarisApi>|ZetarisApi;
+  createApi(input:{credential:string;approved_origin:string;approved_account_scope:string;contract_hash:string;source:ZetarisRuntimeSourceConfig},control?:ExecutionControl):Promise<ZetarisApi>|ZetarisApi;
 }
 
 export type ZetarisPublicPage=Omit<ZetarisPageLedgerEntry,'raw_bytes'>;
@@ -219,17 +219,17 @@ export class ZetarisRuntimeRegistry {
     text(credential,'credential',8192,'INVALID_ZETARIS_CREDENTIAL');await checkActive(control);const probe=await factory.probe({credential,approved_origin:source.approved_origin,approved_account_scope:source.approved_account_scope,contract_hash:source.contract_hash},control);await checkActive(control);
     exact(probe,['status','checked_at','provider_version','observed_account_scope','reason_code','read_only'],'INVALID_ZETARIS_PROBE');
     if(!['available','unauthorized','unavailable','unsupported'].includes(probe.status)||probe.read_only!==true||!Number.isFinite(Date.parse(probe.checked_at))||probe.provider_version!==null&&typeof probe.provider_version!=='string'||probe.observed_account_scope!==null&&typeof probe.observed_account_scope!=='string'||probe.reason_code!==null&&typeof probe.reason_code!=='string')throw new ConnectorError('INVALID_ZETARIS_PROBE','Runtime adapter returned an invalid capability probe.');
-    if(probe.status==='available'&&probe.observed_account_scope!==source.approved_account_scope)throw new ConnectorError('ZETARIS_ACCOUNT_SCOPE_MISMATCH','The runtime probe observed a different account scope.');
-    if(JSON.stringify(probe).includes(credential))throw new ConnectorError('PROVIDER_SECRET_REFLECTION','Zetaris reflected its credential into public probe data.');
+    if(probe.status==='available'&&probe.observed_account_scope!==source.approved_account_scope&&!(probe.observed_account_scope===null&&probe.reason_code==='ZETARIS_ACCOUNT_SCOPE_NOT_ATTESTED'))throw new ConnectorError('ZETARIS_ACCOUNT_SCOPE_MISMATCH','The runtime probe observed a different account scope or omitted its explicit attestation limitation.');
+    if(containsProviderSecret(probe,credential))throw new ConnectorError('PROVIDER_SECRET_REFLECTION','Zetaris reflected its credential into public probe data.');
     return {runtime_status:'probed',reason_code:null,probe};
   }
   async capture(sourceInput:ZetarisRuntimeSourceConfig,input:ZetarisCurrentCaseInput,credential:string,control:ExecutionControl={}):Promise<ZetarisRuntimeCaptureOutcome>{
     const source=validateZetarisRuntimeSourceConfig(sourceInput),request=buildZetarisCaptureRequest(source,input),factory=this.resolve(source);if(!factory)return {runtime_status:'blocked',reason_code:'ZETARIS_ADAPTER_NOT_REGISTERED',request,public_result:null,raw_pages:[],evidence_drafts:[]};
-    text(credential,'credential',8192,'INVALID_ZETARIS_CREDENTIAL');await checkActive(control);const api=await factory.createApi({credential,approved_origin:source.approved_origin,approved_account_scope:source.approved_account_scope,contract_hash:source.contract_hash},control),result=await executeZetarisCapture(api,request,control);await checkActive(control);
+    text(credential,'credential',8192,'INVALID_ZETARIS_CREDENTIAL');await checkActive(control);const api=await factory.createApi({credential,approved_origin:source.approved_origin,approved_account_scope:source.approved_account_scope,contract_hash:source.contract_hash,source},control),result=await executeZetarisCapture(api,request,control);await checkActive(control);
     if(result.workspace_id!==source.workspace_id||result.source_id!==source.source_id||result.case_id!==request.case_id||result.revision_id!==request.revision_id||result.metric_hash!==request.metric_hash||result.comparison_hash!==request.comparison_hash)throw new ConnectorError('ZETARIS_RESULT_BINDING_MISMATCH','Runtime capture result does not match the immutable request.');
     if(result.status==='complete'&&result.admissible&&(result.rows.length!==result.observed_row_count||result.rows.length>request.caps.max_rows||!result.rows.every(row=>admissibleSignal(row,result))))throw new ConnectorError('ZETARIS_CAPTURE_INVALID','A complete capture contained an invalid or uncounted signal; no evidence was admitted.');
-    const {public_result,raw_pages}=splitResult(result),serialized=JSON.stringify(public_result);
-    if(serialized.includes(credential))throw new ConnectorError('PROVIDER_SECRET_REFLECTION','Zetaris reflected its credential into public capture data.');
+    const {public_result,raw_pages}=splitResult(result);
+    if(containsProviderSecret(public_result,credential))throw new ConnectorError('PROVIDER_SECRET_REFLECTION','Zetaris reflected its credential into public capture data.');
     return {runtime_status:'captured',reason_code:null,request,public_result,raw_pages,evidence_drafts:evidenceDrafts(result)};
   }
 }

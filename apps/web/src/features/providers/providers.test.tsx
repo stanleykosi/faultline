@@ -6,7 +6,7 @@ import { eventNames } from './ExportDeclarations';
 import { sourceReady, type Source, type ModelProposal } from './types';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ReplacementActivationReview, replacementCanActivate, type Replacement } from './CredentialReplacement';
-import { ModelProfileRemovalReview } from './ModelProfiles';
+import { ModelProfileRemovalReview,modelConnectionInput,modelProviderBaseUrl,modelProviderLabel,openRouterBaseUrl } from './ModelProfiles';
 import { ApiError, resource } from '../../api';
 import { commandKey, type CommandIdentity } from '../../command-key';
 import { type AnalysisContext, type Evidence, type ReportRecord } from '../investigation/types';
@@ -247,4 +247,13 @@ describe("Exact request readiness", () => {
             globalThis.fetch = original;
         }
     });
+});
+
+
+test('Agent model form offers equal provider identities and removes Meterless connect keys from URLs before submission',()=>{
+ assert.equal(modelProviderLabel('openrouter'),'OpenRouter');assert.equal(modelProviderLabel('meterless'),'Meterless Nightshift');assert.equal(modelProviderBaseUrl('meterless',openRouterBaseUrl),'http://127.0.0.1:8088/v1');assert.equal(modelProviderBaseUrl('openrouter','http://127.0.0.1:8088/v1'),openRouterBaseUrl);
+ const form=new FormData();for(const [name,value] of Object.entries({name:'Nightshift',base_url:'127.0.0.1:8088/connect#k=synthetic-runtime-token',model_name:'meterless/unknown.mode',secret_value:''}))form.set(name,value);
+ const value=modelConnectionInput(form,'meterless');assert.deepEqual(value,{name:'Nightshift',provider:'meterless',base_url:'http://127.0.0.1:8088/v1',model_name:'meterless/unknown.mode',secret_value:'synthetic-runtime-token'});assert.equal(value.base_url.includes('#'),false);
+ form.set('base_url','http://127.0.0.1:8088/v1');assert.throws(()=>modelConnectionInput(form,'meterless'),/real Meterless Runtime token/);form.set('secret_value','rt-local');assert.throws(()=>modelConnectionInput(form,'meterless'),/rt-local/);
+ form.set('base_url',openRouterBaseUrl);form.set('secret_value','synthetic-router-key');form.set('model_name','provider/model');const router=modelConnectionInput(form,'openrouter');assert.equal(router.provider,'openrouter');assert.equal(router.base_url,openRouterBaseUrl);assert.equal(router.secret_value,'synthetic-router-key');
 });

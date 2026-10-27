@@ -1,3 +1,4 @@
+import {registerZetarisRestAdapters} from '../../../packages/core/src/integrations/zetaris-bootstrap.js';
 import {executionErrorCode} from './execution-error.js';
 import {redactionPreviewHandler,redactionApplyHandler} from '../../../packages/core/src/privacy/service.js';
 import {cleanExpiredDirectUploads} from '../../../packages/core/src/captures/direct-uploads.js';
@@ -22,6 +23,7 @@ import {verifyRuntimeSchema} from '../../../packages/database/src/runtime-schema
 import {claimJob,finishJob,renewLease} from '../../../packages/core/src/jobs/service.js';
 import {deterministicJobOutcome} from '../../../packages/core/src/jobs/outcome.js';
 import {createPgBossOptions,createPgBossSendOptions} from './pg-boss-options.js';
+registerZetarisRestAdapters();
 if(!config.queueDatabaseUrl||!config.databaseUrl||!process.env.DISPATCHER_DATABASE_URL){
  console.log('Faultline worker blocked: configure runtime, queue and restricted dispatcher PostgreSQL pools. No work executed.');process.exitCode=0;
 }else{

@@ -1098,7 +1098,8 @@
               "enum": [
                 "ollama",
                 "openai_compatible",
-                "openrouter"
+                "openrouter",
+                "meterless"
               ]
             },
             "base_url": {

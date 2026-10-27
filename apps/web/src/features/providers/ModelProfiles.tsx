@@ -14,8 +14,9 @@ import { useCommand } from "../investigation/Shared";
 import { OperationPanel } from "./OperationPanel";
 import { CredentialReplacement } from "./CredentialReplacement";
 import { rememberProvider, type ModelProfile } from "./types";
+import {METERLESS_BASE_URL,normalizeMeterlessProfile,validMeterlessToken} from '../../../../../packages/core/src/models/meterless-profile';
 
-export type ModelProviderChoice = "ollama" | "openai_compatible" | "openrouter";
+export type ModelProviderChoice = "ollama" | "openai_compatible" | "openrouter" | "meterless";
 
 export const openRouterBaseUrl = "https://openrouter.ai/api/v1";
 
@@ -24,8 +25,16 @@ export function modelProviderBaseUrl(
   current: string,
 ): string {
   if (provider === "openrouter") return openRouterBaseUrl;
-  return current === openRouterBaseUrl ? "" : current;
+  if (provider === "meterless") return METERLESS_BASE_URL;
+  return current === openRouterBaseUrl || current === METERLESS_BASE_URL ? "" : current;
 }
+export function modelConnectionInput(form:FormData,provider:ModelProviderChoice){
+ const secret=String(form.get('secret_value')??''),base=String(form.get('base_url')??'').trim();
+ const parsed=provider==='meterless'?normalizeMeterlessProfile(base,secret||undefined):{base_url:base,token:secret||undefined};
+ if(provider==='meterless'&&!validMeterlessToken(parsed.token))throw new Error('Paste the real Meterless Runtime token or a connect link containing its key.');
+ return {name:String(form.get('name')??'').trim(),provider,base_url:parsed.base_url,model_name:String(form.get('model_name')??'').trim(),...(parsed.token?{secret_value:parsed.token}:{})};
+}
+export function modelProviderLabel(provider:ModelProviderChoice){return provider==='meterless'?'Meterless Nightshift':provider==='openrouter'?'OpenRouter':provider==='ollama'?'Local Ollama':'Compatible endpoint';}
 
 export function ModelProfileRemovalReview({
   profile,
@@ -128,14 +137,8 @@ export function ModelProfiles({
     setPending("create");
     setError(null);
     try {
-      const secret = String(form.get("secret_value"));
-      await send(path, {
-        name: String(form.get("name")).trim(),
-        provider,
-        base_url: String(form.get("base_url")).trim(),
-        model_name: String(form.get("model_name")).trim(),
-        ...(secret ? { secret_value: secret } : {}),
-      });
+      // Strip connect fragments before sending so a URL never carries the token to API logging.
+      await send(path, modelConnectionInput(form,provider));
       element.reset();
       setProvider("openrouter");
       setBaseUrl(openRouterBaseUrl);
@@ -264,7 +267,8 @@ export function ModelProfiles({
                 </Status>
               </div>
               {profile.reason_code && <p className="notice warning">{profile.reason_code}</p>}
-              <p>{profile.model_name}</p>
+              <p>{modelProviderLabel(profile.provider)} · {profile.model_name}</p>
+              {profile.provider==='meterless'&&profile.status==='unauthorized'&&<p className="notice warning">Meterless rejected this token. Replace it with the runtime token and check the connection again.</p>}
               <details><summary>Manage connection</summary>
               <dl className="policy-values">
                 <div>
@@ -413,6 +417,7 @@ export function ModelProfiles({
                 disabled={!!pending}
               >
                 <option value="openrouter">OpenRouter</option>
+                <option value="meterless">Meterless Nightshift</option>
                 <option value="ollama">Local Ollama structured chat</option>
                 <option value="openai_compatible">
                   Configured compatible JSON-schema endpoint
@@ -424,17 +429,19 @@ export function ModelProfiles({
               hint={
                 provider === "openrouter"
                   ? "OpenRouter uses its standard API base."
+                  : provider === "meterless"
+                  ? "Paste the runtime URL or connect link. The server operator must approve this exact origin; localhost refers to the server hosting Faultline."
                   : provider === "ollama"
                   ? "The exact local origin must be explicitly registered by the operator."
                   : "The exact approved origin and supported /v1 base are required by the server."
               }
             >
-              <input name="base_url" type="url" required value={baseUrl} onChange={event => setBaseUrl(event.target.value)} />
+              <input name="base_url" type={provider==='meterless'?'text':'url'} required value={baseUrl} autoComplete="off" spellCheck={false} onChange={event => setBaseUrl(event.target.value)} />
             </Field>
-            <Field label="Model name">
-              <input name="model_name" required maxLength={200} />
+            <Field label={provider==='meterless'?'Routing mode':'Model name'} hint={provider==='meterless'?'Use meterless/auto or another mode from your runtime. Connection checks discover routing modes and independently verify strict structured output.':undefined}>
+              <input key={provider} name="model_name" required maxLength={200} defaultValue={provider==='meterless'?'meterless/auto':''} />
             </Field>
-            <Field label={provider === "openrouter" ? "OpenRouter API key" : "API key — optional"}>
+            <Field label={provider === "openrouter" ? "OpenRouter API key" : provider==='meterless'?'Meterless Runtime token':'API key — optional'} hint={provider==='meterless'?'Copy proxy-token from the runtime state directory, or paste a connect link above. rt-local is rejected.':undefined}>
               <input
                 name="secret_value"
                 type="password"

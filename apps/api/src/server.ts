@@ -26,6 +26,7 @@ import {verifyRuntimeSchema} from '../../../packages/database/src/runtime-schema
 import * as workspaces from '../../../packages/core/src/workspaces/service.js';
 import * as cases from '../../../packages/core/src/cases/service.js';
 import {objects} from '../../../packages/core/src/storage/objects.js';
+import {registerZetarisRestAdapters} from '../../../packages/core/src/integrations/zetaris-bootstrap.js';
 const string=(maxLength=200)=>({type:'string',minLength:1,maxLength});
 const object=(properties:object,required:string[]=Object.keys(properties))=>({type:'object',additionalProperties:false,properties,required});
 const uid={type:'string',format:'uuid'};
@@ -33,6 +34,7 @@ const scoped=object({workspaceId:uid});
 const caseScoped=object({workspaceId:uid,caseId:uid});
 function safeEqual(a:string,b:string){const aa=Buffer.from(a),bb=Buffer.from(b);return aa.length===bb.length&&timingSafeEqual(aa,bb);}
 export async function buildServer(){
+  registerZetarisRestAdapters();
  const app=Fastify({ajv:{customOptions:{removeAdditional:false,coerceTypes:false}},logger:{level:'warn',redact:['req.headers.cookie','req.headers.authorization','req.headers.x-csrf-token','req.body','res.headers.set-cookie']},bodyLimit:1024*1024,requestIdHeader:false,genReqId:()=>randomUUID()});
  installRequestWorkTracking(app);
  installExportMetadataDiagnostics(app);

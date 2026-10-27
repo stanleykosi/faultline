@@ -91,7 +91,7 @@ export async function probeSourceCredential(row:Row,token:string,control:Executi
   const outcome=await zetarisRuntimeRegistry.probe(zetarisConfig(row),token,control);
   if(outcome.runtime_status==='blocked')return {capabilities:failedCapability(row.kind,ZETARIS_PROTOCOL,new ConnectorError(outcome.reason_code,'No reviewed adapter is registered for this exact Zetaris contract.')),repository_id:null};
   const probe=outcome.probe,available=probe.status==='available';
-  return {capabilities:validateContract('connector-capabilities',{schema_version:1,source_kind:row.kind,status:probe.status,checked_at:new Date(probe.checked_at).toISOString(),adapter_version:ZETARIS_PROTOCOL,read_only:true,features:available?['federated_read_only_queries','bounded_pagination','row_lineage','protected_raw_pages']:[],unsupported_features:['raw_sql','provider_writes','aggregate_causal_claims'],reason_code:probe.reason_code,provider_version:probe.provider_version}),repository_id:null};
+  return {capabilities:validateContract('connector-capabilities',{schema_version:1,source_kind:row.kind,status:probe.status,checked_at:new Date(probe.checked_at).toISOString(),adapter_version:ZETARIS_PROTOCOL,read_only:true,features:available?['federated_read_only_queries','bounded_capture','row_lineage','protected_raw_pages']:[],unsupported_features:['raw_sql','provider_writes','aggregate_causal_claims'],reason_code:probe.reason_code,provider_version:probe.provider_version}),repository_id:null};
  }
  const transport=http??new PinnedHttpTransport({origins:[...remoteOrigins(),...operatorOrigins('POSTHOG_STORAGE_ORIGINS')],signal:control.signal,beforeRequest:control.assertActive});
  let repository_id=row.repository_id,capabilities:any;

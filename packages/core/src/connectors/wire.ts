@@ -11,6 +11,22 @@ export interface ExecutionControl {signal?: AbortSignal; assertActive?: () => Pr
 export class ConnectorError extends Error {
   constructor(public code: string, message: string, public details: {http_status?: number; request_id?: string; retry_at?: string} = {}) {super(message);}
 }
+/** Inspect decoded data, rather than JSON escaping, before exposing provider
+ * output. Iteration bounds stack use; cycle protection also permits diagnostics
+ * built in memory. Private raw capture bytes should be kept outside this value.
+ */
+export function containsProviderSecret(value:unknown,credential:string):boolean {
+  if(!credential)return false;
+  const pending:unknown[]=[value],seen=new WeakSet<object>();
+  while(pending.length){
+    const current=pending.pop();
+    if(typeof current==='string'){if(current.includes(credential))return true;continue;}
+    if(current===null||typeof current!=='object'||seen.has(current))continue;
+    seen.add(current);
+    for(const key of Object.keys(current)){if(key.includes(credential))return true;pending.push((current as Record<string,unknown>)[key]);}
+  }
+  return false;
+}
 export function requireWire(condition: unknown, code: string, message: string): asserts condition {if (!condition) throw new ConnectorError(code, message);}
 export async function checkActive(control: ExecutionControl = {}): Promise<void> {control.signal?.throwIfAborted(); await control.assertActive?.(); control.signal?.throwIfAborted();}
 export function header(response: WireResponse, name: string): string | undefined {const key = Object.keys(response.headers).find(k => k.toLowerCase() === name.toLowerCase()); return key ? response.headers[key] : undefined;}

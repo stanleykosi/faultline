@@ -8,13 +8,14 @@ import {hash,byteHash,now} from '../canonical.js';
 import {demand,DomainError} from '../errors.js';
 import {strictJson,object,requireSuccess,requireWire,ConnectorError,checkActive,type ExecutionControl} from '../connectors/wire.js';
 import {PinnedHttpTransport,operatorOrigins,exactOrigin} from '../integrations/transport.js';
+import {normalizeMeterlessProfile,validMeterlessToken} from './meterless-profile.js';
 
 export const MODEL_ADAPTER_VERSION='bounded-structured-v4';
 export const PROMPT_VERSION='faultline-proposals-v14';
 export const REPORT_PROMPT_VERSION='faultline-report-v13';
 export const modelSchema=JSON.parse(fs.readFileSync(path.resolve('contracts/model-response.schema.json'),'utf8'));
 export const modelSchemaHash=hash(modelSchema);
-export interface ModelWireProfile {provider:'ollama'|'openai_compatible'|'openrouter';base_url:string;model_name:string;token?:string;}
+export interface ModelWireProfile {provider:'ollama'|'openai_compatible'|'openrouter'|'meterless';base_url:string;model_name:string;token?:string;}
 export interface GatewayReply<T=FaultlineModelResponse> {value:T;response_hash:string;reported_input:number|null;reported_output:number|null;model_identity:string;}
 type NumericIssue=Readonly<{kind:'number_symbol'|'number_word';word?:string}>;
 /** Reuse the lexical guard's finite diagnostic vocabulary, never provider text. */
@@ -29,7 +30,7 @@ function safeNumericIssue(value:unknown):NumericIssue|undefined {
 }
 export class ModelWireError extends ConnectorError {
  readonly numeric_issue?:NumericIssue;
- constructor(code:string,public response_hash:string,public reported_input:number|null=null,public reported_output:number|null=null,numeric_issue?:NumericIssue){
+ constructor(code:string,public response_hash:string,public reported_input:number|null=null,public reported_output:number|null=null,numeric_issue?:NumericIssue,public model_identity:string|null=null){
   super(code,'Model transport or proposal validation failed; inspect the redacted call ledger.');
   this.numeric_issue=safeNumericIssue(numeric_issue);
  }
@@ -46,11 +47,13 @@ export function modelJobFailure(error:unknown):unknown {
  return error;
 }
 export function endpoint(profile:ModelWireProfile):{origin:string;url:string;local:boolean} {
+ if(profile.provider==='meterless')try{profile={...profile,base_url:normalizeMeterlessProfile(profile.base_url).base_url};}catch{throw new ConnectorError('INVALID_MODEL_PROFILE','Use a supported Meterless Runtime URL.');}
  const url=new URL(profile.base_url),localOrigins=operatorOrigins('MODEL_LOCAL_ORIGINS'),allowed=operatorOrigins('MODEL_ALLOWED_ORIGINS');exactOrigin(url.origin);
  requireWire(!url.username&&!url.password&&!url.search&&!url.hash&&(allowed.includes(url.origin)||localOrigins.includes(url.origin)),'MODEL_ENDPOINT_NOT_APPROVED','Operator must register this exact model origin.');
  const basePath=url.pathname.replace(/\/+$/,'')||'/';
  requireWire(profile.provider==='ollama'?basePath==='/':profile.provider==='openrouter'?url.origin==='https://openrouter.ai'&&basePath==='/api/v1':['/','/v1'].includes(basePath),'MODEL_DIALECT_UNSUPPORTED','Model profile requires the exact supported API dialect base.');
  requireWire(typeof profile.model_name==='string'&&profile.model_name.length>0&&profile.model_name.length<=200&&!/[\x00-\x1f]/.test(profile.model_name),'INVALID_MODEL_PROFILE','Select a finite explicit installed model identifier.');
+ requireWire(profile.provider!=='meterless'||/^meterless\/[^\s\x00-\x1f\x7f]{1,190}$/.test(profile.model_name),'INVALID_MODEL_PROFILE','Select an explicit Meterless routing mode.');
  return {origin:url.origin,url:url.origin+(profile.provider==='ollama'?'/api/chat':profile.provider==='openrouter'?'/api/v1/chat/completions':'/v1/chat/completions'),local:localOrigins.includes(url.origin)};
 }
 export function structuredWireBody(profile:ModelWireProfile,messages:{role:'system'|'user';content:string}[],maxOutput:number,schema:Record<string,unknown>,schemaName:string) {
@@ -59,7 +62,7 @@ export function structuredWireBody(profile:ModelWireProfile,messages:{role:'syst
  // Bounded structured tasks need their allowance for the visible schema response.
  // Models requiring reasoning must fail this dialect's full capability probe.
  const openrouter=profile.provider==='openrouter';
- return profile.provider==='ollama'?{model:profile.model_name,messages,stream:false,think:false,format:wireSchema,options:{num_predict:maxOutput,temperature:0}}:{model:profile.model_name,messages,stream:false,temperature:0,...(openrouter?{max_tokens:maxOutput}:{max_completion_tokens:maxOutput}),...(openrouter?{reasoning:{effort:'none' as const,exclude:true,enabled:false},provider:{require_parameters:true}}:{}),response_format:{type:'json_schema',json_schema:{name:schemaName,strict:true,schema:wireSchema}}};
+ return profile.provider==='ollama'?{model:profile.model_name,messages,stream:false,think:false,format:wireSchema,options:{num_predict:maxOutput,temperature:0}}:{model:profile.model_name,messages,stream:false,temperature:0,...(openrouter||profile.provider==='meterless'?{max_tokens:maxOutput}:{max_completion_tokens:maxOutput}),...(openrouter?{reasoning:{effort:'none' as const,exclude:true,enabled:false},provider:{require_parameters:true}}:{}),response_format:{type:'json_schema',json_schema:{name:schemaName,strict:true,schema:wireSchema}}};
 }
 /** A strict subset of the capability-probed response contract; the full runtime
  * validator still runs. Task-specific unused prose arrays remain empty. */
@@ -120,22 +123,45 @@ export function modelContractValidationDiagnostic(schemaName:string,errors:reado
  });
  return issues.length?{schemaName,issues}:null;
 }
+function modelHeaders(profile:ModelWireProfile,chat:boolean):Record<string,string> {
+ if(profile.provider==='meterless')requireWire(validMeterlessToken(profile.token),'PROVIDER_UNAUTHORIZED','Paste the real Meterless Runtime token and retry the connection check.');
+ return {...(profile.token?{Authorization:'Bearer '+profile.token}:{}),...(profile.provider==='meterless'?{'meterless-app':'faultline',...(chat?{'meterless-scope':'user'}:{})}:{})};
+}
+function modelRequireSuccess(profile:ModelWireProfile,response:Parameters<typeof requireSuccess>[0]){
+ if(profile.provider==='meterless'&&(response.status===401||response.status===403))throw new ConnectorError('PROVIDER_UNAUTHORIZED','The Meterless Runtime rejected this token.',{http_status:response.status});
+ requireSuccess(response);
+}
+/** Check decoded strings and keys as well as raw bytes; JSON escapes are not redaction. */
+function rejectDecodedCredential(value:unknown,token:string|undefined){
+ if(!token)return;const pending:unknown[]=[value];
+ while(pending.length){const entry=pending.pop();if(typeof entry==='string')requireWire(!entry.includes(token),'MODEL_SECRET_REFLECTION','Provider reflected a credential; no proposal was retained.');else if(entry&&typeof entry==='object')for(const [key,child]of Object.entries(entry)){requireWire(!key.includes(token),'MODEL_SECRET_REFLECTION','Provider reflected a credential; no proposal was retained.');pending.push(child);}}
+}
+/** Authenticated discovery is evidence of reachability only; it never grants structured readiness. */
+export async function discoverMeterlessModels(profile:ModelWireProfile,control:ExecutionControl={}) {
+ requireWire(profile.provider==='meterless','INVALID_MODEL_PROFILE','Discovery requires a Meterless profile.');
+ await checkActive(control);const target=endpoint(profile),transport=new PinnedHttpTransport({origins:[target.origin],trustedLocalOrigins:target.local?[target.origin]:[],timeoutMs:10000,signal:control.signal});
+ const response=await transport.get(target.origin+'/v1/models',{headers:modelHeaders(profile,false),allowedOrigins:[target.origin],maxBytes:65536});modelRequireSuccess(profile,response);
+ requireWire(!profile.token||!response.body.includes(Buffer.from(profile.token)),'MODEL_SECRET_REFLECTION','Provider reflected a credential.');await checkActive(control);
+ const parsed=object(strictJson(response.body,65536));rejectDecodedCredential(parsed,profile.token);requireWire(Array.isArray(parsed.data)&&parsed.data.length<=512,'MODEL_DISCOVERY_UNSUPPORTED','Meterless returned no bounded model inventory.');
+ const models=[...new Set(parsed.data.map(item=>object(item).id).filter((id):id is string=>typeof id==='string'&&/^meterless\/[^\s\x00-\x1f\x7f]{1,190}$/.test(id)))];
+ requireWire(models.length>0,'PROVIDER_UNAVAILABLE','The Meterless Runtime returned no routing modes.');return models;
+}
 export async function requestStructuredModel<T>(profile:ModelWireProfile,messages:{role:'system'|'user';content:string}[],outputLimit:number,schema:Record<string,unknown>,schemaName:string,validate:(value:unknown)=>T,control:ExecutionControl={}):Promise<GatewayReply<T>> {
- await checkActive(control);const target=endpoint(profile),transport=new PinnedHttpTransport({origins:[target.origin],trustedLocalOrigins:target.local?[target.origin]:[],timeoutMs:90000,signal:control.signal}),body=Buffer.from(JSON.stringify(structuredWireBody(profile,messages,outputLimit,schema,schemaName)));
- const response=await transport.post(target.url,body,{headers:{'Content-Type':'application/json',...(profile.token?{Authorization:'Bearer '+profile.token}:{})},allowedOrigins:[target.origin],maxBytes:131072});let input:number|null=null,output:number|null=null;try{requireSuccess(response);requireWire(!profile.token||!response.body.includes(Buffer.from(profile.token)),'MODEL_SECRET_REFLECTION','Provider reflected a credential; no proposal was retained.');await checkActive(control);
- const parsed=object(modelJson(schemaName,'envelope',response.body)),model=parsed.model;requireWire(typeof model==='string'&&(model===profile.model_name || profile.provider==='ollama'&&!profile.model_name.includes(':')&&model===profile.model_name+':latest'),'MODEL_IDENTITY_CHANGED','Provider returned another model identifier; re-probe the selected profile.');
+ await checkActive(control);const target=endpoint(profile),transport=new PinnedHttpTransport({origins:[target.origin],trustedLocalOrigins:target.local?[target.origin]:[],timeoutMs:profile.provider==='meterless'?180000:90000,signal:control.signal}),body=Buffer.from(JSON.stringify(structuredWireBody(profile,messages,outputLimit,schema,schemaName)));
+ const response=await transport.post(target.url,body,{headers:{'Content-Type':'application/json',...modelHeaders(profile,true)},allowedOrigins:[target.origin],maxBytes:131072});let input:number|null=null,output:number|null=null,identity:string|null=null;try{modelRequireSuccess(profile,response);requireWire(!profile.token||!response.body.includes(Buffer.from(profile.token)),'MODEL_SECRET_REFLECTION','Provider reflected a credential; no proposal was retained.');await checkActive(control);
+ const parsed=object(modelJson(schemaName,'envelope',response.body));rejectDecodedCredential(parsed,profile.token);const model=parsed.model;if(typeof model==='string'&&model.length>0&&model.length<=200&&!/[\x00-\x1f\x7f]/.test(model))identity=model;requireWire(identity!==null&&(profile.provider==='meterless'||model===profile.model_name || profile.provider==='ollama'&&!profile.model_name.includes(':')&&model===profile.model_name+':latest'),'MODEL_IDENTITY_CHANGED','Provider returned another model identifier; re-probe the selected profile.');
  let content:unknown;
  if(profile.provider==='ollama'){const message=object(parsed.message);input=count(parsed.prompt_eval_count);output=count(parsed.eval_count);requireWire(parsed.done===true&&parsed.done_reason==='stop'&&message.role==='assistant'&&(message.tool_calls===undefined||Array.isArray(message.tool_calls)&&message.tool_calls.length===0),'MODEL_NONTERMINAL','Ollama must return a completed bounded assistant response without tool calls.');content=message.content;}
  else {requireWire(Array.isArray(parsed.choices)&&parsed.choices.length===1,'INVALID_MODEL_RESPONSE','Compatible endpoint must return exactly one assistant completion.');const choice=object(parsed.choices[0]),message=object(choice.message),usage=parsed.usage?object(parsed.usage):{};input=count(usage.prompt_tokens);output=count(usage.completion_tokens);const terminal=choice.finish_reason==='stop'&&message.role==='assistant'&&!message.refusal&&!message.function_call&&(message.tool_calls===undefined||Array.isArray(message.tool_calls)&&message.tool_calls.length===0);if(!terminal)try{const diagnostic=modelCompletionDiagnostic(schemaName,choice.finish_reason,usage,message.content);if(diagnostic)console.warn(JSON.stringify(diagnostic));}catch{}requireWire(terminal,'MODEL_REFUSED_OR_TRUNCATED','Provider refused, truncated, or requested unsupported tools.');content=message.content;}
- requireWire(typeof content==='string'&&Buffer.byteLength(content)<=131072,'MODEL_OUTPUT_LIMIT','Provider returned no bounded textual schema output.');requireWire(output!==null&&output<=outputLimit,'MODEL_USAGE_UNSUPPORTED','Provider must report bounded output usage and honor the requested ceiling.');
+ requireWire(typeof content==='string'&&Buffer.byteLength(content)<=131072,'MODEL_OUTPUT_LIMIT','Provider returned no bounded textual schema output.');requireWire((profile.provider!=='meterless'||input!==null)&&output!==null&&output<=outputLimit,'MODEL_USAGE_UNSUPPORTED','Provider must report bounded output usage and honor the requested ceiling.');
  const contract=protectedContractName(schemaName),validator=contract?ajv.getSchema('https://faultline.invalid/contracts/'+contract+'.schema.json'):undefined,previousIssues=validator?.errors;
- let value:T;try{value=validate(modelJson(schemaName,'content',Buffer.from(content)));}catch(error){
+ let value:T;try{const decoded=modelJson(schemaName,'content',Buffer.from(content));rejectDecodedCredential(decoded,profile.token);value=validate(decoded);}catch(error){
   if(error instanceof ModelNumericProseError)try{const diagnostic=modelNumericProseDiagnostic(schemaName,error);if(diagnostic)console.warn(JSON.stringify(diagnostic));}catch{}
   if(error instanceof DomainError&&error.code==='INVALID_INPUT'&&validator?.errors!==previousIssues)try{const diagnostic=modelContractValidationDiagnostic(schemaName,validator?.errors);if(diagnostic)console.warn(JSON.stringify(diagnostic));}catch{}
   if(error instanceof ModelNumericProseError)throw error;
   if(error instanceof ConnectorError)throw error;if(error instanceof DomainError&&/^MODEL_[A-Z_]+$/.test(error.code))throw new ConnectorError(error.code,'Provider output failed protected model validation.');throw new ConnectorError('INVALID_MODEL_PROPOSAL','Provider output failed the protected structured schema.');}
- return {value,response_hash:byteHash(response.body),reported_input:input,reported_output:output,model_identity:model};
- }catch(error){throw new ModelWireError(error instanceof ConnectorError||error instanceof DomainError?error.code:'INVALID_MODEL_PROPOSAL',byteHash(response.body),input,output,modelNumericProseDiagnostic(schemaName,error)?.issue);}
+ return {value,response_hash:byteHash(response.body),reported_input:input,reported_output:output,model_identity:identity!};
+ }catch(error){if(error instanceof ConnectorError&&error.code==='MODEL_SECRET_REFLECTION')identity=null;throw new ModelWireError(error instanceof ConnectorError||error instanceof DomainError?error.code:'INVALID_MODEL_PROPOSAL',byteHash(response.body),input,output,modelNumericProseDiagnostic(schemaName,error)?.issue,identity);}
 }
 export async function requestModel(profile:ModelWireProfile,messages:{role:'system'|'user';content:string}[],outputLimit:number,control:ExecutionControl={},kind?:FaultlineModelResponse['kind'],evidenceIds?:readonly string[]):Promise<GatewayReply> {
  return requestStructuredModel(profile,messages,outputLimit,proposalWireSchema(kind,evidenceIds),'faultline_proposal',value=>{const response=validateContract<FaultlineModelResponse>('model-response',value);assertNumberFreeModelProse(response);return response;},control);
@@ -157,6 +183,8 @@ export function validateProposal(value:FaultlineModelResponse,revision:string,in
  assertNumberFreeModelProse(value);if(kind==='hypotheses')demand(value.draft_sentences.length===0,'INVALID_MODEL_PROPOSAL','Hypothesis proposals must leave unused draft sentences empty.',409);if(kind==='diagnosis_draft'){demand(value.hypotheses.length===0&&value.questions.length===0&&value.limitations.length===0&&value.draft_sentences.length>0&&value.draft_sentences.length<=6,'INVALID_MODEL_PROPOSAL','Report draft must include bounded reviewable sentences; unused proposal arrays must be empty.',409);for(const sentence of value.draft_sentences)demand(!['observed','hypothesis'].includes(sentence.qualification)||sentence.evidence_ids.length>0,'MODEL_CITATION_REQUIRED','Report findings need supplied sanitized evidence citations.',409);}demand(value.revision_id===revision&&value.input_hash===inputHash&&value.kind===kind,'MODEL_BINDING_MISMATCH','Proposal belongs to another immutable input.',409);let tests=0;for(const h of value.hypotheses){demand(new Set(h.proposed_test_kinds).size===h.proposed_test_kinds.length,'INVALID_MODEL_PROPOSAL','Proposed finite test kinds must be unique.',409);tests+=h.proposed_test_kinds.length;for(const id of [...h.supporting_evidence_ids,...h.contradicting_evidence_ids])demand(Object.hasOwn(evidenceHashes,id),'MODEL_UNKNOWN_EVIDENCE','Model cited unavailable evidence.',409);}for(const sentence of value.draft_sentences)for(const id of sentence.evidence_ids)demand(Object.hasOwn(evidenceHashes,id),'MODEL_UNKNOWN_EVIDENCE','Model cited unavailable evidence.',409);demand(tests<=8,'MODEL_TEST_LIMIT','Proposal exceeds the finite test ceiling.');return value;
 }
 export async function probeWire(profile:ModelWireProfile,control:ExecutionControl={}) {
- const value={schema_version:1,kind:'hypotheses',revision_id:'capability-probe',input_hash:'0'.repeat(64),hypotheses:[],draft_sentences:[],questions:[],limitations:[]},started=Date.now(),reply=await requestModel(profile,[{role:'system',content:'Return exactly the supplied JSON object under the full requested schema. This is an innocuous capability probe with no customer evidence.'},{role:'user',content:JSON.stringify(value)}],256,control);validateProposal(reply.value,value.revision_id,value.input_hash,{},'hypotheses');demand(hash(reply.value)===hash(value),'MODEL_SCHEMA_UNSUPPORTED','Provider could not satisfy the exact innocuous schema probe.');return {capabilities:validateContract<FaultlineConnectorCapabilities>('connector-capabilities',{schema_version:1,source_kind:'model',status:'available',checked_at:now(),adapter_version:MODEL_ADAPTER_VERSION,read_only:true,features:['strict_proposals','bounded_output','terminal_nonstreaming','no_tools'],unsupported_features:['truth_verdicts','oracle_changes','publication','hidden_reasoning','weight_identity_guarantee'],reason_code:null,provider_version:profile.provider}),details:{latency_ms:Date.now()-started,model_identity:reply.model_identity,weight_digest:null,floating_model_identity:true,response_hash:reply.response_hash,reported_input:reply.reported_input,reported_output:reply.reported_output,schema_hash:modelSchemaHash}};
+ const discovered=profile.provider==='meterless'?await discoverMeterlessModels(profile,control):null;
+ if(discovered)requireWire(discovered.includes(profile.model_name),'MODEL_ROUTING_MODE_UNAVAILABLE','The selected Meterless routing mode is absent from its authenticated inventory.');
+ const value={schema_version:1,kind:'hypotheses',revision_id:'capability-probe',input_hash:'0'.repeat(64),hypotheses:[],draft_sentences:[],questions:[],limitations:[]},started=Date.now(),reply=await requestModel(profile,[{role:'system',content:'Return exactly the supplied JSON object under the full requested schema. This is an innocuous capability probe with no customer evidence.'},{role:'user',content:JSON.stringify(value)}],256,control);validateProposal(reply.value,value.revision_id,value.input_hash,{},'hypotheses');demand(hash(reply.value)===hash(value),'MODEL_SCHEMA_UNSUPPORTED','Provider could not satisfy the exact innocuous schema probe.');return {capabilities:validateContract<FaultlineConnectorCapabilities>('connector-capabilities',{schema_version:1,source_kind:'model',status:'available',checked_at:now(),adapter_version:MODEL_ADAPTER_VERSION,read_only:true,features:['strict_proposals','bounded_output','terminal_nonstreaming','no_tools'],unsupported_features:['truth_verdicts','oracle_changes','publication','hidden_reasoning','weight_identity_guarantee'],reason_code:null,provider_version:profile.provider}),details:{...(discovered?{discovered_model_ids:discovered,routing_mode:profile.model_name,runtime_status:'online'}:{}),latency_ms:Date.now()-started,model_identity:reply.model_identity,weight_digest:null,floating_model_identity:true,response_hash:reply.response_hash,reported_input:reply.reported_input,reported_output:reply.reported_output,schema_hash:modelSchemaHash}};
 }
 

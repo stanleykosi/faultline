@@ -117,7 +117,7 @@ The system uses these components:
 - Fastify.
 - PostgreSQL 17, Drizzle, and pg-boss.
 - Better Auth.
-- An AI case agent connected to Ollama or a compatible model endpoint.
+- An AI case agent connected to OpenRouter, Meterless Nightshift, Ollama, or a compatible model endpoint.
 - Private filesystem storage for evidence by default.
 
 The AI case agent uses the configured model endpoint to propose the next investigation steps. Each proposed action follows the system's approval and resource limits.
@@ -125,6 +125,14 @@ The AI case agent uses the configured model endpoint to propose the next investi
 Browser tests use a separate, isolated runner with a limited set of actions. The native local fixture profile has different isolation requirements from the production profile for external sites.
 
 The system does not require Redis, Kafka, Kubernetes, a vector database, a Python service, or a large agent framework.
+
+## Model and data connections
+
+OpenRouter and Meterless Nightshift are separate provider choices for the AI case agent. Select either profile for planning, investigation tools and report drafts. The selected profile keeps the same approval, evidence and resource limits.
+
+Faultline also includes a production HTTP transport for an authorized Zetaris instance. API and worker startup register its configured origin, contract hash and organisation binding. A successful connection check is required before evidence queries.
+
+See [provider setup](config/provider-setup.md) for private configuration, migration requirements and connection checks.
 
 ## Example investigations
 

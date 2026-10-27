@@ -1,9 +1,14 @@
 import {test} from 'node:test';
+import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
-import {ConnectorError, type ExecutionControl} from '../wire.js';
+import {ConnectorError, containsProviderSecret, type ExecutionControl} from '../wire.js';
 import {compileZetarisQuery, executeZetarisCapture, ZETARIS_PROTOCOL, ZetarisEvidenceClient, zetarisTemplates, type ZetarisCaptureRequest, type ZetarisConfig, type ZetarisOpenResult, type ZetarisProviderPage, type ZetarisSessionHandle, type ZetarisTransport, type ZetarisApi, type ZetarisCaptureResult} from './index.js';
 import {hash} from '../../canonical.js';
 import {buildZetarisCaptureRequest, validateZetarisRuntimeSourceConfig, ZetarisRuntimeRegistry, type ZetarisCurrentCaseInput, type ZetarisRuntimeAdapterFactory, type ZetarisRuntimeSourceConfig} from '../../integrations/zetaris-runtime.js';
+import {createZetarisRestAdapter, type ZetarisRestHttp} from '../../integrations/zetaris-http.js';
+import {ZETARIS_PROJECTION_COLUMNS} from './index.js';
+import type {RequestOptions} from '../../integrations/transport.js';
+import type {WireResponse} from '../wire.js';
 
 // index
 const digest='a'.repeat(64);
@@ -148,4 +153,105 @@ test('a complete capture rejects a hash-invalid normalized signal instead of par
 test('credentials reflected outside protected raw pages are rejected before publication',async()=>{
   const runtime=new ZetarisRuntimeRegistry();runtime.register(factory(request=>{const result=capture(request),row=result.rows[0]!;row.summary=`provider echoed ${credential}`;const {content_hash:_,...base}=row;row.content_hash=hash(base);return result;}));
   await assert.rejects(runtime.capture(source,input,credential),(error:unknown)=>error instanceof ConnectorError&&error.code==='PROVIDER_SECRET_REFLECTION');
+});
+
+// Reviewed current REST contract. All network responses here are deterministic
+// injected transport fixtures; these tests make no live-provider assertion.
+const restSource:ZetarisRuntimeSourceConfig={...source,adapter_id:'zetaris_rest_v1',approved_account_scope:'zetaris:org:73'};
+const restConfig={adapter_id:restSource.adapter_id,approved_origin:restSource.approved_origin,contract_hash:contract,organisation_id:73};
+const restBinding={credential,approved_origin:restSource.approved_origin,approved_account_scope:restSource.approved_account_scope,contract_hash:contract,source:restSource};
+const restRow=(id='event_one'):unknown[]=>[`release_exposure:${id}:release_one`,'2026-10-01T12:34:56.789Z','release_a','session_one','mobile',null,null,'false',id,'release_one'];
+const response=(value:unknown,status=200):WireResponse=>({status,headers:{'Content-Type':'application/json','X-Request-ID':'response-123'},body:Buffer.from(JSON.stringify(value))});
+class RestFixture implements ZetarisRestHttp {
+  calls:{method:string;url:string;options:RequestOptions}[]=[];
+  constructor(private responses:(WireResponse|Error|((options:RequestOptions)=>Promise<WireResponse>))[]){}
+  async request(method:'GET'|'POST',url:string,options:RequestOptions={}):Promise<WireResponse>{
+    this.calls.push({method,url,options});const next=this.responses.shift();if(next instanceof Error)throw next;if(typeof next==='function')return next(options);if(!next)throw Error('Unexpected fixture wire request');return next;
+  }
+}
+
+test('REST factory probes actual datasource and SQL reads with explicit org and fresh request UUIDs',async()=>{
+  const transport=new RestFixture([response({data:[{name:'approved'}]}),response({data:[['1']]})]),factory=createZetarisRestAdapter(restConfig,{transport}),runtime=new ZetarisRuntimeRegistry();runtime.register(factory);
+  const outcome=await runtime.probe(restSource,credential);assert.equal(outcome.runtime_status,'probed');if(outcome.runtime_status!=='probed')return;
+  assert.equal(outcome.probe.status,'available');assert.equal(outcome.probe.observed_account_scope,null);assert.equal(outcome.probe.reason_code,'ZETARIS_ACCOUNT_SCOPE_NOT_ATTESTED');assert.equal(outcome.probe.provider_version,null);
+  assert.deepEqual(transport.calls.map(call=>[call.method,call.url]),[['GET',`${restSource.approved_origin}/api/v1.0/datasource/datasources`],['POST',`${restSource.approved_origin}/api/v1.0/sql-editor/sqls/run`]]);
+  for(const call of transport.calls){assert.equal(call.options.headers!.Authorization,`Bearer ${credential}`);assert.equal(call.options.headers!['X-Org-ID'],'73');assert.match(call.options.headers!['X-Request-ID']!,/^[a-f0-9-]{36}$/);assert.deepEqual(call.options.allowedOrigins,[restSource.approved_origin]);assert.equal(call.options.maxBytes,262_144);assert(call.options.signal instanceof AbortSignal);}
+  assert.notEqual(transport.calls[0]!.options.headers!['X-Request-ID'],transport.calls[1]!.options.headers!['X-Request-ID']);
+  const body=JSON.parse(transport.calls[1]!.options.body!.toString());assert.equal(body.sql,'SELECT 1 LIMIT 1');assert.equal(body.source,'SqlEditor');assert.equal(body.limit,1);assert.match(body.queryId,/^[a-f0-9-]{36}$/);assert.notEqual(body.queryId,transport.calls[1]!.options.headers!['X-Request-ID']);
+});
+
+test('REST capture uses the fixed compiler projection, LIMIT sentinel and one real protected response',async()=>{
+  const transport=new RestFixture([response({data:[restRow()],columns:ZETARIS_PROJECTION_COLUMNS})]),factory=createZetarisRestAdapter(restConfig,{transport}),runtime=new ZetarisRuntimeRegistry();runtime.register(factory);
+  const outcome=await runtime.capture(restSource,{...input,caps:{page_size:2,max_pages:3,max_rows:10}},credential);assert.equal(outcome.runtime_status,'captured');if(outcome.runtime_status!=='captured')return;
+  const result=outcome.public_result;assert.equal(result.status,'complete');assert.equal(result.admissible,true);assert.equal(result.rows.length,1);assert.equal(result.pages.length,1);assert.equal(result.close.status,'not_attempted');assert.equal(result.read_account_scope,'zetaris:org:73');assert.equal(result.provider_version,null);assert.equal(outcome.evidence_drafts.length,1);assert.match(result.limitations.join(' '),/does not attest the account scope/);assert.match(result.limitations.join(' '),/execution may continue/);
+  const requestBody=JSON.parse(transport.calls[0]!.options.body!.toString());assert.equal(requestBody.limit,3);assert.match(requestBody.sql,/LIMIT 3$/);assert.match(requestBody.sql,/^SELECT /);assert.doesNotMatch(requestBody.sql,/FETCH FIRST/);assert.equal(requestBody.source,'SqlEditor');assert.equal(transport.calls.length,1);assert.equal(result.pages[0]!.body_hash,hashRaw(outcome.raw_pages[0]!.raw_bytes));assert.equal(result.query_hash,hashRaw(Buffer.from(requestBody.sql)));assert.equal(Object.hasOwn(result.pages[0]!,'raw_bytes'),false);assert.doesNotMatch(JSON.stringify(result),new RegExp(credential));
+});
+function hashRaw(bytes:Buffer):string{return createHash('sha256').update(bytes).digest('hex');}
+
+test('REST row sentinel and effective page capacity remain partial and emit no evidence',async()=>{
+  for(const [caps,expected] of [[{page_size:10,max_pages:2,max_rows:1},'ZETARIS_ROW_CAP'],[{page_size:1,max_pages:1,max_rows:10},'ZETARIS_PAGE_CAP']] as const){
+    const transport=new RestFixture([response({data:[restRow('one'),restRow('two')]})]),runtime=new ZetarisRuntimeRegistry();runtime.register(createZetarisRestAdapter(restConfig,{transport}));
+    const outcome=await runtime.capture(restSource,{...input,caps},credential);assert.equal(outcome.runtime_status,'captured');if(outcome.runtime_status!=='captured')return;assert.equal(outcome.public_result.status,'partial');assert.equal(outcome.public_result.reason_code,expected);assert.equal(outcome.public_result.admissible,false);assert.equal(outcome.public_result.observed_row_count,2);assert.equal(outcome.public_result.rows.length,1);assert.equal(outcome.public_result.pages[0]!.terminal,false);assert.deepEqual(outcome.evidence_drafts,[]);assert.equal(transport.calls.length,1);
+  }
+});
+
+test('REST additional approved pages cannot enlarge a single response beyond its page size',async()=>{
+  for(const rowCount of [11,40]){
+    const transport=new RestFixture([response({data:Array.from({length:rowCount},(_,index)=>restRow(`event_${index}`))})]),runtime=new ZetarisRuntimeRegistry();runtime.register(createZetarisRestAdapter(restConfig,{transport}));
+    const outcome=await runtime.capture(restSource,{...input,caps:{page_size:10,max_pages:5,max_rows:100}},credential);assert.equal(outcome.runtime_status,'captured');if(outcome.runtime_status!=='captured')return;
+    assert.equal(outcome.public_result.status,rowCount===11?'partial':'failed');assert.equal(outcome.public_result.reason_code,rowCount===11?'ZETARIS_PAGE_CAP':'ZETARIS_RESPONSE_ROW_CAP');assert.equal(outcome.public_result.admissible,false);assert(outcome.public_result.rows.length<=10);assert.deepEqual(outcome.evidence_drafts,[]);
+    const requestBody=JSON.parse(transport.calls[0]!.options.body!.toString());assert.equal(requestBody.limit,11);assert.match(requestBody.sql,/LIMIT 11$/);assert.equal(transport.calls.length,1);
+  }
+});
+
+test('REST rejects schema drift, duplicate signals, omitted data, metadata truncation and secret reflection',async()=>{
+  const cases:[unknown,string][]=[
+    [{data:[restRow().slice(0,9)]},'INVALID_ZETARIS_SCHEMA'],
+    [{data:[Object.fromEntries(ZETARIS_PROJECTION_COLUMNS.map((column,index)=>[column,restRow()[index]]))]},'INVALID_ZETARIS_SCHEMA'],
+    [{data:[restRow()],columns:[...ZETARIS_PROJECTION_COLUMNS].reverse()},'INVALID_ZETARIS_SCHEMA'],
+    [{data:[restRow(),restRow()]},'ZETARIS_DUPLICATE_ROW'],
+    [{data:[restRow('one'),[restRow('one')[0],...restRow('two').slice(1)]]},'ZETARIS_DUPLICATE_ROW'],
+    [{data:[['wrong-template:one:release_one',...restRow().slice(1)]]},'ZETARIS_PROJECTION_MISMATCH'],
+    [{data:[[restRow()[0],'2026-10-03T00:00:00Z',...restRow().slice(2)]]},'ZETARIS_PROJECTION_MISMATCH'],
+    [{data:[[...restRow().slice(0,2),'another_release',...restRow().slice(3)]]},'ZETARIS_PROJECTION_MISMATCH'],
+    [{},'INVALID_ZETARIS_SCHEMA'],
+    [{data:[],hasMore:true},'INVALID_ZETARIS_SCHEMA'],
+    [{data:[[...restRow().slice(0,6),credential,...restRow().slice(7)]]},'PROVIDER_SECRET_REFLECTION'],
+  ];
+  for(const [value,expected]of cases){const transport=new RestFixture([response(value)]),api=await createZetarisRestAdapter(restConfig,{transport}).createApi(restBinding);const result=await api.capture(buildZetarisCaptureRequest(restSource,input));assert.equal(result.status,'failed');assert.equal(result.reason_code,expected);assert.equal(result.admissible,false);assert.deepEqual(result.rows,[]);assert.deepEqual(result.pages,[]);assert.doesNotMatch(JSON.stringify(result),new RegExp(credential));}
+  const duplicate=response({data:[]});duplicate.body=Buffer.from('{"data":[],"data":[]}');const result=await (await createZetarisRestAdapter(restConfig,{transport:new RestFixture([duplicate])}).createApi(restBinding)).capture(buildZetarisCaptureRequest(restSource,input));assert.equal(result.reason_code,'DUPLICATE_PROVIDER_KEY');
+});
+
+test('REST probe failures are unavailable, unauthorized or unsupported without reflecting provider errors',async()=>{
+  for(const [wire,expected,code]of [[response({error:credential},401),'unauthorized','PROVIDER_UNAUTHORIZED'],[response({error:credential},503),'unavailable','PROVIDER_UNAVAILABLE'],[response({unexpected:true}),'unsupported','INVALID_ZETARIS_SCHEMA'],[new Error(`socket ${credential}`),'unavailable','PROVIDER_UNAVAILABLE']] as const){
+    const factory=createZetarisRestAdapter(restConfig,{transport:new RestFixture([wire])}),probe=await factory.probe(restBinding);assert.equal(probe.status,expected);assert.equal(probe.reason_code,code);assert.equal(probe.observed_account_scope,null);assert.doesNotMatch(JSON.stringify(probe),new RegExp(credential));
+  }
+  const factory=createZetarisRestAdapter(restConfig,{transport:new RestFixture([response({data:[]}),response({data:[]})])});assert.equal((await factory.probe(restBinding)).status,'unsupported');
+});
+
+test('REST byte caps, excess rows, truncated JSON, deadline and cancellation fail closed',async()=>{
+  const request=buildZetarisCaptureRequest(restSource,input);
+  const oversized=response({data:[restRow()]});const invalid={...response({}),body:Buffer.from('{"data":[')};
+  for(const [wire,cap,code]of [[oversized,16,'PROVIDER_BYTE_LIMIT'],[invalid,1000,'INVALID_PROVIDER_JSON']] as const){const api=await createZetarisRestAdapter(restConfig,{transport:new RestFixture([wire])}).createApi(restBinding),result=await api.capture({...request,caps:{...request.caps,max_page_bytes:cap}});assert.equal(result.status,'failed');assert.equal(result.reason_code,code);assert.equal(result.admissible,false);}
+  const excess=await (await createZetarisRestAdapter(restConfig,{transport:new RestFixture([response({data:[restRow('one'),restRow('two'),restRow('three')]})])}).createApi(restBinding)).capture({...request,caps:{...request.caps,max_rows:1}});assert.equal(excess.reason_code,'ZETARIS_RESPONSE_ROW_CAP');
+  const controller=new AbortController(),transport=new RestFixture([async()=>{controller.abort();return response({data:[restRow()]});}]),api=await createZetarisRestAdapter(restConfig,{transport}).createApi(restBinding),cancelled=await api.capture(request,{signal:controller.signal});assert.equal(cancelled.status,'cancelled');assert.equal(cancelled.admissible,false);assert.deepEqual(cancelled.rows,[]);
+  const beforeTransport=new RestFixture([]),beforeApi=await createZetarisRestAdapter(restConfig,{transport:beforeTransport}).createApi(restBinding),before=await beforeApi.capture(request,{signal:controller.signal});assert.equal(before.status,'cancelled');assert.equal(beforeTransport.calls.length,0);
+  const deadlineApi=await createZetarisRestAdapter(restConfig,{deadline_ms:10,transport:new RestFixture([async()=>new Promise(resolve=>setTimeout(()=>resolve(response({data:[]})),40))])}).createApi(restBinding),timed=await deadlineApi.capture(request);assert.equal(timed.status,'failed');assert.equal(timed.reason_code,'PROVIDER_ABORTED');
+});
+
+test('REST immutable binding rejects scope, origin, contract, credentials and raw SQL before the wire',async()=>{
+  assert.throws(()=>createZetarisRestAdapter({...restConfig,organisation_id:0}),/explicit positive/);assert.throws(()=>createZetarisRestAdapter({...restConfig,approved_origin:'http://zetaris.example.test'}),/HTTPS/);assert.throws(()=>createZetarisRestAdapter({...restConfig,approved_origin:'https://127.0.0.1'}),/literal/);
+  const transport=new RestFixture([]),factory=createZetarisRestAdapter(restConfig,{transport});
+  for(const binding of [{...restBinding,approved_account_scope:'zetaris:org:1'},{...restBinding,approved_origin:'https://other.example.test'},{...restBinding,contract_hash:'d'.repeat(64)},{...restBinding,credential:'key\r\ninjected'}])await assert.rejects(async()=>factory.createApi(binding),ConnectorError);
+  const api=await factory.createApi(restBinding),request=buildZetarisCaptureRequest(restSource,input);await assert.rejects(()=>api.capture({...request,sql:'DROP TABLE private'} as ZetarisCaptureRequest),(error:unknown)=>error instanceof ConnectorError&&error.code==='INVALID_ZETARIS_REQUEST');assert.equal(transport.calls.length,0);
+});
+
+test('decoded credential reflection catches JSON-escaped strings and keys before capture or probe exposure',async()=>{
+  for(const escapedCredential of ['key-with-"quoted"-segment','key-with-\\backslash']){
+    const value={nested:[{summary:`provider echoed ${escapedCredential}`}]};assert.equal(JSON.stringify(value).includes(escapedCredential),false);assert.equal(containsProviderSecret(value,escapedCredential),true);assert.equal(containsProviderSecret({[escapedCredential]:'unexpected metadata'},escapedCredential),true);
+    const cycle:Record<string,unknown>={safe:'unrelated'};cycle.self=cycle;assert.equal(containsProviderSecret(cycle,escapedCredential),false);
+    const binding={...restBinding,credential:escapedCredential},reflectedRow=restRow();reflectedRow[6]=`provider echoed ${escapedCredential}`;
+    const api=await createZetarisRestAdapter(restConfig,{transport:new RestFixture([response({data:[reflectedRow]})])}).createApi(binding),result=await api.capture(buildZetarisCaptureRequest(restSource,input));assert.equal(result.status,'failed');assert.equal(result.reason_code,'PROVIDER_SECRET_REFLECTION');assert.equal(result.admissible,false);assert.deepEqual(result.rows,[]);assert.deepEqual(result.pages,[]);
+    const probe=await createZetarisRestAdapter(restConfig,{transport:new RestFixture([response({data:[{name:escapedCredential}]})])}).probe(binding);assert.equal(probe.status,'unavailable');assert.equal(probe.reason_code,'PROVIDER_SECRET_REFLECTION');assert.equal(containsProviderSecret(probe,escapedCredential),false);
+  }
 });

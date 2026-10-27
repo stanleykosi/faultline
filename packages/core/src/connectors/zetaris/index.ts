@@ -57,9 +57,9 @@ export interface ZetarisOpenResult {query_handle:string;request_id:string|null;p
 export interface ZetarisCloseResult {request_id:string|null;closed_at:string;}
 
 /**
- * Normalized provider boundary. The real HTTP adapter must be implemented only
- * after its workspace OpenAPI/Postman contract is inspected. It maps observed
- * login/open/page/close responses into this port without exposing tokens.
+ * Session/cursor boundary for explicitly reviewed providers that actually expose
+ * this lifecycle. Current Zetaris REST uses the direct ZetarisApi capture path;
+ * this port must never imply undocumented login, page or close endpoints.
  */
 export interface ZetarisTransport {
   login(input:{credential:string;request_id:string},control?:ExecutionControl):Promise<ZetarisSessionHandle>;
@@ -153,7 +153,9 @@ const REQUEST_KEYS=['protocol','template','workspace_id','case_id','revision_id'
 const FILTER_KEYS=['from','to','case_key','flow_key','release_id','affected_cohort','control_cohort'] as const;
 const CAP_KEYS=['page_size','max_pages','max_rows','max_page_bytes','max_total_bytes'] as const;
 const PAGE_KEYS=['page_id','requested_cursor','next_cursor','terminal','rows','raw_bytes','observed_at','request_id','metadata'] as const;
-const ROW_KEYS=['signal_id','occurred_at','release_id','session_id','cohort','symptom_ref','summary','context_value','primary_record_id','related_record_id'] as const;
+/** Exact positional projection used by the reviewed REST row-array contract. */
+export const ZETARIS_PROJECTION_COLUMNS=Object.freeze(['signal_id','occurred_at','release_id','session_id','cohort','symptom_ref','summary','context_value','primary_record_id','related_record_id'] as const);
+const ROW_KEYS=ZETARIS_PROJECTION_COLUMNS;
 
 function exactKeys(value:unknown,allowed:readonly string[],code='INVALID_ZETARIS_REQUEST'):asserts value is Record<string,unknown>{
   requireWire(value!==null&&typeof value==='object'&&!Array.isArray(value),code,'Zetaris value must be an object.');
@@ -218,7 +220,7 @@ function validateSession(value:ZetarisSessionHandle):ZetarisSessionHandle{exactK
 function validateOpen(value:ZetarisOpenResult):ZetarisOpenResult{exactKeys(value,['query_handle','request_id','page'],'INVALID_ZETARIS_SCHEMA');bounded(value.query_handle,'query_handle',2000);if(value.request_id!==null)bounded(value.request_id,'request_id',200);return value;}
 function validateClose(value:ZetarisCloseResult):ZetarisCloseResult{exactKeys(value,['request_id','closed_at'],'INVALID_ZETARIS_SCHEMA');if(value.request_id!==null)bounded(value.request_id,'request_id',200);providerTimestamp(value.closed_at);return value;}
 
-function normalizeRow(raw:unknown,request:ZetarisCaptureRequest,primary:ZetarisApprovedView,related:ZetarisApprovedView):ZetarisNormalizedSignal{
+export function normalizeZetarisRow(raw:unknown,request:ZetarisCaptureRequest,primary:ZetarisApprovedView,related:ZetarisApprovedView):ZetarisNormalizedSignal{
   exactKeys(raw,ROW_KEYS,'INVALID_ZETARIS_SCHEMA');requireWire(Object.keys(raw).length===ROW_KEYS.length,'INVALID_ZETARIS_SCHEMA','Provider row omits required projection fields.');const signal_id=bounded(raw.signal_id,'signal_id',1000),occurred_at=providerTimestamp(raw.occurred_at),primary_record_id=bounded(raw.primary_record_id,'primary_record_id',1000),related_record_id=bounded(raw.related_record_id,'related_record_id',1000);
   const base={signal_id,relationship:request.template.id,occurred_at,release_id:nullableString(raw.release_id,'release_id',500),session_id:nullableString(raw.session_id,'session_id',500),cohort:nullableString(raw.cohort,'cohort',500),symptom_ref:nullableString(raw.symptom_ref,'symptom_ref',1000),summary:nullableString(raw.summary,'summary',4000),context_value:nullableString(raw.context_value,'context_value',1000),lineage:[{view_id:primary.id,role:primary.role,record_id:primary_record_id},{view_id:related.id,role:related.role,record_id:related_record_id}] as ZetarisNormalizedSignal['lineage']};return {...base,content_hash:hash(base)};
 }
@@ -236,7 +238,7 @@ export class ZetarisEvidenceClient {
       await checkActive(control);const opened=validateOpen(await this.transport.open({session_handle:session.handle,request_id:randomUUID(),select:compiled.select,page_limit:request.caps.page_size},control));queryHandle=opened.query_handle;let expectedCursor:string|null=null,current:ZetarisProviderPage=opened.page;
       for(;;){
         await checkActive(control);validatePage(current,request.caps);requireWire(current.requested_cursor===expectedCursor,'ZETARIS_CURSOR_MISMATCH','Provider page does not match the requested cursor.');const bodyHash=byteHash(current.raw_bytes),prior=pageIds.get(current.page_id);if(prior!==undefined)throw new ConnectorError(prior===bodyHash?'ZETARIS_DUPLICATE_PAGE':'ZETARIS_CHANGED_PAGE','Provider repeated or changed a page identity.');requireWire(!bodyHashes.has(bodyHash),'ZETARIS_DUPLICATE_PAGE','Provider repeated page bytes under a different identity.');pageIds.set(current.page_id,bodyHash);bodyHashes.add(bodyHash);totalBytes+=current.raw_bytes.length;requireWire(totalBytes<=request.caps.max_total_bytes,'ZETARIS_TOTAL_BYTE_CAP','Provider capture exceeds its total byte cap.');
-        const acceptedBefore=rows.length;for(const raw of current.rows){observed++;if(rows.length>=request.caps.max_rows)continue;const normalized=normalizeRow(raw,request,primary,related),identity=`${normalized.lineage[0].record_id}\u0000${normalized.lineage[1].record_id}`,previous=rowIdentities.get(identity);if(previous!==undefined){requireWire(previous===normalized.content_hash,'ZETARIS_CHANGED_ROW','Provider changed a repeated row during capture.');continue;}rowIdentities.set(identity,normalized.content_hash);rows.push(normalized);}
+        const acceptedBefore=rows.length;for(const raw of current.rows){observed++;if(rows.length>=request.caps.max_rows)continue;const normalized=normalizeZetarisRow(raw,request,primary,related),identity=`${normalized.lineage[0].record_id}\u0000${normalized.lineage[1].record_id}`,previous=rowIdentities.get(identity);if(previous!==undefined){requireWire(previous===normalized.content_hash,'ZETARIS_CHANGED_ROW','Provider changed a repeated row during capture.');continue;}rowIdentities.set(identity,normalized.content_hash);rows.push(normalized);}
         pages.push({index:pages.length,page_id:current.page_id,requested_cursor:current.requested_cursor,next_cursor:current.next_cursor,terminal:current.terminal,row_count:current.rows.length,accepted_row_count:rows.length-acceptedBefore,byte_count:current.raw_bytes.length,body_hash:bodyHash,metadata_hash:hash(current.metadata),observed_at:providerTimestamp(current.observed_at),request_id:current.request_id,raw_bytes:Buffer.from(current.raw_bytes)});
         if(observed>request.caps.max_rows){status='partial';reason='ZETARIS_ROW_CAP';break;}if(current.terminal){status='complete';reason=null;break;}if(pages.length>=request.caps.max_pages){status='partial';reason='ZETARIS_PAGE_CAP';break;}
         const cursor=current.next_cursor!;requireWire(!requestedCursors.has(cursor),'ZETARIS_DUPLICATE_PAGE','Provider repeated a pagination cursor.');requestedCursors.add(cursor);expectedCursor=cursor;await checkActive(control);current=await this.transport.page({session_handle:session.handle,query_handle:queryHandle,request_id:randomUUID(),cursor},control);

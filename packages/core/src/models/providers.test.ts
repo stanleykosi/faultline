@@ -4,6 +4,9 @@ import {endpoint, structuredWireBody, modelCompletionDiagnostic, modelJsonDiagno
 import {agentWireSchema} from '../agent/service.js';
 import {ConnectorError} from '../connectors/wire.js';
 import {serverOpenRouter, bindServerModel, serverModelToken, SERVER_MODEL_ACTOR} from './server-openrouter.js';
+import {serverMeterless,currentServerModelIds,SERVER_MODEL_ACTORS,SERVER_METERLESS_ACTOR} from './server-openrouter.js';
+import {normalizeMeterlessProfile,validMeterlessToken,METERLESS_BASE_URL} from './meterless-profile.js';
+import {normalizeModelProfileInput} from './service.js';
 
 // openrouter
 test('OpenRouter uses its exact reviewed OpenAI-compatible route',()=>{
@@ -111,3 +114,30 @@ test('blank or absent scope enables independent workspace profiles without accep
  }
  process.env.OPENROUTER_WORKSPACE_ID='invalid-nonblank';assert.equal(serverOpenRouter(process.env,wid),null);
 }));
+
+test('Meterless URL normalization separates connect credentials and rejects ambiguous or unsafe URLs',()=>{
+ for(const value of ['127.0.0.1:8088','http://127.0.0.1:8088/','http://127.0.0.1:8088/v1','http://127.0.0.1:8088/v1/','127.0.0.1:8088/v1/chat/completions','127.0.0.1:8088/v1/models','127.0.0.1:8088/healthz'])assert.deepEqual(normalizeMeterlessProfile(value),{base_url:METERLESS_BASE_URL});
+ const connected=normalizeMeterlessProfile('http://127.0.0.1:8088/connect#k=synthetic-runtime-token');assert.deepEqual(connected,{base_url:METERLESS_BASE_URL,token:'synthetic-runtime-token'});assert.ok(!connected.base_url.includes('#'));
+ for(const value of ['http://user:password@127.0.0.1:8088/v1','http://127.0.0.1:8088/v1/v1','http://127.0.0.1:8088/v1?key=secret','http://127.0.0.1:8088/v1#k=secret','http://127.0.0.1:8088/connect#k=rt-local','http://127.0.0.1:8088/connect#k=one&k=two','file:///v1'])assert.throws(()=>normalizeMeterlessProfile(value));
+ assert.throws(()=>normalizeMeterlessProfile('http://127.0.0.1:8088/connect#k=first','second'));
+ for(const token of [undefined,'','rt-local','token\r\nheader','token with spaces'])assert.equal(validMeterlessToken(token),false);
+ const profile=normalizeModelProfileInput({name:'Nightshift',provider:'meterless',base_url:'127.0.0.1:8088/connect#k=synthetic-runtime-token',model_name:'meterless/novel.mode'});assert.equal(profile.base_url,METERLESS_BASE_URL);assert.equal(profile.secret_value,'synthetic-runtime-token');
+ assert.throws(()=>normalizeModelProfileInput({...profile,secret_value:undefined}),{code:'INVALID_MODEL_CREDENTIAL'});
+ const before=process.env.MODEL_LOCAL_ORIGINS;process.env.MODEL_LOCAL_ORIGINS='[]';try{assert.throws(()=>endpoint({...profile,token:profile.secret_value}),{code:'MODEL_ENDPOINT_NOT_APPROVED'});}finally{if(before===undefined)delete process.env.MODEL_LOCAL_ORIGINS;else process.env.MODEL_LOCAL_ORIGINS=before;}
+});
+
+test('Meterless structured dialect preserves string messages, exact schema and max_tokens cap',()=>{
+ const body=structuredWireBody({provider:'meterless',base_url:METERLESS_BASE_URL,model_name:'meterless/auto'},[{role:'user',content:'Plain text stays a string.'}],256,{type:'object',additionalProperties:false,properties:{text:{type:'string'}},required:['text']},'test') as any;
+ assert.equal(body.messages[0].content,'Plain text stays a string.');assert.equal(body.max_tokens,256);assert.equal(body.max_completion_tokens,undefined);assert.equal(body.reasoning,undefined);assert.equal(body.response_format.json_schema.strict,true);assert.equal(body.response_format.json_schema.schema.additionalProperties,false);
+});
+
+test('OpenRouter and Nightshift server profiles coexist with isolated credentials and immutable generations',async()=>{
+ const meterless={METERLESS_RUNTIME_TOKEN:'synthetic-runtime-token',METERLESS_MODEL:'meterless/auto',METERLESS_BASE_URL:METERLESS_BASE_URL,METERLESS_WORKSPACE_ID:wid},keys=[...Object.keys(env),...Object.keys(meterless)],before=Object.fromEntries(keys.map(key=>[key,process.env[key]]));Object.assign(process.env,env,meterless);
+ try{
+  const router=serverOpenRouter()!,runtime=serverMeterless()!,runtimeRow={...row(router),id:runtime.profile_id,provider:runtime.provider,base_url:runtime.base_url,model_name:runtime.model_name,profile_hash:runtime.profile_hash,created_by:SERVER_METERLESS_ACTOR};
+  assert.deepEqual(currentServerModelIds(wid),[router.profile_id,runtime.profile_id]);assert.equal(SERVER_MODEL_ACTORS.length,2);assert.notEqual(router.profile_id,runtime.profile_id);assert.equal(serverModelToken(runtimeRow,wid),meterless.METERLESS_RUNTIME_TOKEN);assert.equal(serverModelToken(row(router),wid),env.OPENROUTER_API_KEY);assert.equal(bindServerModel(runtimeRow,wid).token,undefined);
+  for(const change of [{METERLESS_RUNTIME_TOKEN:'another-token'},{METERLESS_MODEL:'meterless/deep'},{METERLESS_BASE_URL:'http://127.0.0.1:8090/v1'}])assert.notEqual(serverMeterless({...env,...meterless,...change})!.profile_id,runtime.profile_id);
+  for(const change of [{METERLESS_RUNTIME_TOKEN:'rt-local'},{METERLESS_MODEL:'ordinary/model'},{METERLESS_BASE_URL:'http://127.0.0.1:8088/connect#k=synthetic-runtime-token'},{METERLESS_WORKSPACE_ID:'invalid'}])assert.equal(serverMeterless({...env,...meterless,...change}),null);
+  process.env.METERLESS_RUNTIME_TOKEN='rotated-runtime-token';assert.throws(()=>bindServerModel(runtimeRow,wid),{code:'SERVER_MODEL_CHANGED'});assert.equal(serverModelToken(row(router),wid),env.OPENROUTER_API_KEY);
+ }finally{for(const key of keys){if(before[key]===undefined)delete process.env[key];else process.env[key]=before[key];}}
+});

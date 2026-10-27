@@ -14,6 +14,15 @@ test('model and client cannot provide an extra verified verdict on a canonical m
  assert.ok(validateContract('metric',metric));assert.throws(()=>validateContract('metric',{...metric,verified:true}));
 });
 
+test('model profile requests admit each configured provider and reject undeclared aliases or readiness',()=>{
+ for(const provider of ['openrouter','meterless']){
+  const input={name:'Investigation model',provider,base_url:provider==='meterless'?'http://127.0.0.1:8088/v1':'https://openrouter.ai/api/v1',model_name:provider==='meterless'?'meterless/auto':'vendor/model',secret_value:'synthetic-private-token'};
+  assert.deepEqual(operationBody('createModelProfile',input),input);
+  assert.throws(()=>operationBody('createModelProfile',{...input,status:'available'}),{code:'INVALID_INPUT'});
+  assert.throws(()=>operationBody('createModelProfile',{...input,provider:'nightshift'}),{code:'INVALID_INPUT'});
+ }
+});
+
 // agent allowance
 const ceiling={max_automatic_model_calls:24,max_input_tokens:500000,max_output_tokens:64000};
 test("owner policy contracts bound capacity without counter-reset or nonintegral fields", () => {

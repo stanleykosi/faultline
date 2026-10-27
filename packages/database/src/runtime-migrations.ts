@@ -184,5 +184,10 @@ export const runtimeMigrations = [
     "id": "0037-direct-upload-reservations",
     "checksum": "79211bf60b745d9a8ee8264341450ba07a32a9211c48889bf897e962281f300d",
     "supabaseChecksum": "79211bf60b745d9a8ee8264341450ba07a32a9211c48889bf897e962281f300d"
+  },
+  {
+    "id": "0038-meterless-model-provider",
+    "checksum": "638cce4761490a131967ce88434949f672611e676f1631e58143995b29d66823",
+    "supabaseChecksum": "638cce4761490a131967ce88434949f672611e676f1631e58143995b29d66823"
   }
 ] as const;

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {createHash} from 'node:crypto';
 import {type FaultlineModelResponse} from '../../../contracts/src/generated.js';
-import {requestStructuredModel, requestModel, validateProposal, proposalContext, proposalWireSchema, probeWire, wireBody, modelSchema, PROMPT_VERSION, REPORT_PROMPT_VERSION, MODEL_ADAPTER_VERSION, modelJobFailure, modelCapabilityFailure, ModelWireError, modelContractValidationDiagnostic, modelNumericProseDiagnostic} from './gateway.js';
+import {requestStructuredModel, requestModel, validateProposal, proposalContext, proposalWireSchema, probeWire, wireBody, modelSchema, PROMPT_VERSION, REPORT_PROMPT_VERSION, MODEL_ADAPTER_VERSION, modelJobFailure, modelCapabilityFailure, ModelWireError, modelContractValidationDiagnostic, modelNumericProseDiagnostic,discoverMeterlessModels} from './gateway.js';
 import {NUMBER_FREE_MODEL_TEXT_PATTERN, ModelNumericProseError, assertNumberFreeModelProse, assertNumberFreeModelText} from './numeric-prose.js';
 import {ajv, validateContract} from '../../../contracts/src/validate.js';
 import {Ajv2020} from 'ajv/dist/2020.js';
@@ -453,4 +453,42 @@ test("repair messages use finite error metadata and exclude untrusted provider p
     assert.match(proposalRepairMessage(ordinary.code,ordinary),/INVALID_PROVIDER_JSON/);
     assert.doesNotMatch(proposalRepairMessage(ordinary.code,ordinary),/Forbidden number word/);
  }
+});
+
+
+test('Meterless authenticates discovery and chat, retains actual model identity and never treats reachability as structured readiness',async()=>{
+ const token='synthetic-runtime-token-only',probe={schema_version:1,kind:'hypotheses',revision_id:'capability-probe',input_hash:'0'.repeat(64),hypotheses:[],draft_sentences:[],questions:[],limitations:[]};
+ let mode='valid',chats=0,reads=0;
+ const server=createServer(async(req,res)=>{
+  assert.equal(req.headers.authorization,'Bearer '+token);assert.equal(req.headers['meterless-app'],mode==='foreign'?undefined:'faultline');
+  if(req.url==='/v1/models'){
+   reads++;
+   if(mode==='discover_reflection'){res.end(JSON.stringify({data:[{id:'meterless/auto'}],metadata:{nested:[{[token]:'private'}]}}).split(token).join([...token].map(char=>'\\u'+char.charCodeAt(0).toString(16).padStart(4,'0')).join('')));return;}assert.equal(req.headers['meterless-scope'],undefined);
+   if(mode==='unauthorized'||mode==='forbidden'){res.writeHead(mode==='unauthorized'?401:403,{'retry-after':'30'});res.end('{}');return;}
+   res.end(JSON.stringify({data:mode==='empty'?[]:[{id:'meterless/auto'},{id:'meterless/newclass.newdisposition'},{id:'ordinary/ignored'}]}));return;
+  }
+  assert.equal(req.url,'/v1/chat/completions');assert.equal(req.headers['meterless-scope'],mode==='foreign'?undefined:'user');chats++;
+  const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));const body=JSON.parse(Buffer.concat(chunks).toString());
+  assert.equal(body.model,'meterless/auto');assert.equal(body.stream,false);assert.equal(body.max_tokens,mode==='foreign'?undefined:256);assert.equal(body.max_completion_tokens,mode==='foreign'?256:undefined);assert.equal(body.response_format.json_schema.strict,true);assert.equal(body.response_format.json_schema.schema.additionalProperties,false);assert.equal(typeof body.messages[0].content,'string');
+  if(mode==='chat_unauthorized'){res.writeHead(401);res.end('{}');return;}
+  let content=JSON.stringify(probe);if(mode==='invalid')content=JSON.stringify({...probe,verdict:'PASS'});if(mode==='plain')content='The runtime is online.';
+  if(mode==='reflect_nested')content=JSON.stringify({...probe,questions:[token]}).split(token).join([...token].map(char=>'\\u'+char.charCodeAt(0).toString(16).padStart(4,'0')).join(''));
+  const message={role:'assistant',content,...(mode==='tools'?{tool_calls:[{id:'call',type:'function'}]}:{}),...(mode==='refusal'?{refusal:'No'}:{})};
+  const envelope={model:mode==='identity_control'?'unsafe\nidentity':mode==='reflect_model'?token:'actual/qwen-model',choices:[{message:mode==='reflect_content'?{...message,content:token}:message,finish_reason:mode==='truncated'?'length':'stop'}],...(mode==='reflect_metadata'?{metadata:{nested:[{[token]:'private'}]}}:{}),...(mode==='missing_usage'?{}:{usage:{prompt_tokens:20,completion_tokens:mode==='overlimit'?257:40}})};
+  res.end(JSON.stringify(envelope).split(token).join([...token].map(char=>'\\u'+char.charCodeAt(0).toString(16).padStart(4,'0')).join('')));
+ });
+ await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+(server.address() as {port:number}).port,before=process.env.MODEL_LOCAL_ORIGINS,profile={provider:'meterless' as const,base_url:origin+'/v1',model_name:'meterless/auto',token};process.env.MODEL_LOCAL_ORIGINS=JSON.stringify([origin]);
+ try{
+  assert.deepEqual(await discoverMeterlessModels(profile),['meterless/auto','meterless/newclass.newdisposition']);assert.equal(chats,0,'Discovery never claims the strict schema passed.');
+  const result=await probeWire(profile);assert.equal(result.capabilities.status,'available');assert.equal(result.details.model_identity,'actual/qwen-model');assert.deepEqual(result.details.discovered_model_ids,['meterless/auto','meterless/newclass.newdisposition']);assert.equal(chats,1);
+  for(const unauthorized of ['unauthorized','forbidden']){mode=unauthorized;const previous:number=chats;await assert.rejects(()=>probeWire(profile),{code:'PROVIDER_UNAUTHORIZED'});assert.equal(chats,previous);}
+  mode='empty';await assert.rejects(()=>probeWire(profile),{code:'PROVIDER_UNAVAILABLE'});
+  mode='valid';const previous:number=chats;await assert.rejects(()=>probeWire({...profile,model_name:'meterless/absent'}),{code:'MODEL_ROUTING_MODE_UNAVAILABLE'});assert.equal(chats,previous);
+  const noTokenReads=reads;for(const invalidToken of [undefined,'rt-local'])await assert.rejects(()=>probeWire({...profile,token:invalidToken}),{code:'PROVIDER_UNAUTHORIZED'});assert.equal(reads,noTokenReads);
+  for(const [variant,code] of [['invalid','INVALID_MODEL_PROPOSAL'],['plain','INVALID_PROVIDER_JSON'],['tools','MODEL_REFUSED_OR_TRUNCATED'],['refusal','MODEL_REFUSED_OR_TRUNCATED'],['truncated','MODEL_REFUSED_OR_TRUNCATED'],['missing_usage','MODEL_USAGE_UNSUPPORTED'],['overlimit','MODEL_USAGE_UNSUPPORTED'],['identity_control','MODEL_IDENTITY_CHANGED'],['chat_unauthorized','PROVIDER_UNAUTHORIZED']]){mode=variant!;await assert.rejects(()=>probeWire(profile),(error:unknown)=>{assert.ok(error instanceof ModelWireError);assert.equal(error.code,code);if(!['identity_control','chat_unauthorized'].includes(variant!))assert.equal(error.model_identity,'actual/qwen-model');return true;});}
+  mode='discover_reflection';await assert.rejects(()=>probeWire(profile),{code:'MODEL_SECRET_REFLECTION'});
+  for(const reflected of ['reflect_model','reflect_content','reflect_metadata','reflect_nested']){mode=reflected;await assert.rejects(()=>probeWire(profile),(error:unknown)=>{assert.ok(error instanceof ModelWireError);assert.equal(error.code,'MODEL_SECRET_REFLECTION');assert.equal(error.model_identity,null);assert.ok(!JSON.stringify(error).includes(token));return true;});}
+  // Relaxed routing identity belongs only to Meterless. Other providers retain exact binding.
+  mode='foreign';await assert.rejects(()=>requestModel({...profile,provider:'openai_compatible'},[{role:'user',content:'Fixture request'}],256),{code:'MODEL_IDENTITY_CHANGED'});
+ }finally{if(before===undefined)delete process.env.MODEL_LOCAL_ORIGINS;else process.env.MODEL_LOCAL_ORIGINS=before;server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });

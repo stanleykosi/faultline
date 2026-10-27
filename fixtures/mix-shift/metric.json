@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "template": "session_conversion_v1",
+  "source_id": "synthetic-analytics",
+  "unit": "session",
+  "entry_event": "checkout_started",
+  "success_event": "checkout_completed",
+  "horizon_seconds": 1800,
+  "segment_property": "device",
+  "cohorts": [
+    "mobile",
+    "desktop"
+  ],
+  "windows": {
+    "baseline": {
+      "start": "2026-09-01T00:00:00.000Z",
+      "end": "2026-09-02T00:00:00.000Z"
+    },
+    "comparison": {
+      "start": "2026-09-02T00:00:00.000Z",
+      "end": "2026-09-03T00:00:00.000Z"
+    }
+  },
+  "exclusion_rule": "entry_excluded_false",
+  "timezone": "UTC"
+}

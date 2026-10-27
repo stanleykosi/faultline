@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/coverage.schema.json",
+  "title": "Faultline coverage",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "extraction_status": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "partial",
+        "unknown"
+      ]
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "source_guarantee",
+        "operator_attestation",
+        "lateness_assumption",
+        "none"
+      ]
+    },
+    "covered_start": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "covered_end": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "event_watermark": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attestation": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 2000
+    },
+    "event_time_intervals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "received_time_intervals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 20
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "minItems": 0,
+      "maxItems": 20
+    }
+  },
+  "required": [
+    "extraction_status",
+    "basis",
+    "covered_start",
+    "covered_end",
+    "event_watermark",
+    "attestation",
+    "event_time_intervals"
+  ]
+}

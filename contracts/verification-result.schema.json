@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/verification-result.schema.json",
+  "title": "Faultline verification-result",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "blocked",
+        "inconclusive",
+        "not_run",
+        "cancelled"
+      ]
+    },
+    "association": {
+      "type": "string",
+      "enum": [
+        "not_established",
+        "observed"
+      ]
+    },
+    "mechanism": {
+      "type": "string",
+      "enum": [
+        "untested",
+        "reproduced",
+        "not_reproduced",
+        "inconclusive"
+      ]
+    },
+    "correction": {
+      "type": "string",
+      "enum": [
+        "not_tested",
+        "validated",
+        "failed",
+        "inconclusive"
+      ]
+    },
+    "freshness": {
+      "type": "string",
+      "enum": [
+        "fresh",
+        "stale"
+      ]
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "const": "association_only"
+        },
+        "causal_effect": {
+          "const": "not_established"
+        }
+      },
+      "required": [
+        "scope",
+        "causal_effect"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "minItems": 0,
+      "maxItems": 30
+    },
+    "expected_runs": {
+      "type": "integer",
+      "enum": [
+        12,
+        18
+      ]
+    },
+    "observed_runs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "trusted_fixture",
+        "verified_staging",
+        "exploratory"
+      ]
+    },
+    "production_claim_eligible": {
+      "type": "boolean"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "hypothesis_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "metric_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "outcome",
+    "association",
+    "mechanism",
+    "correction",
+    "freshness",
+    "attribution",
+    "reasons",
+    "expected_runs",
+    "observed_runs",
+    "plan_hash",
+    "mode",
+    "production_claim_eligible",
+    "workspace_id",
+    "case_id",
+    "revision_id",
+    "hypothesis_id",
+    "metric_hash",
+    "snapshot_hash"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "production_claim_eligible": {
+            "const": true
+          }
+        },
+        "required": [
+          "production_claim_eligible"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mode": {
+            "const": "verified_staging"
+          },
+          "outcome": {
+            "const": "passed"
+          },
+          "correction": {
+            "const": "validated"
+          },
+          "freshness": {
+            "const": "fresh"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "correction": {
+            "const": "validated"
+          }
+        },
+        "required": [
+          "correction"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "passed"
+          },
+          "mechanism": {
+            "const": "reproduced"
+          },
+          "freshness": {
+            "const": "fresh"
+          },
+          "reasons": {
+            "maxItems": 0,
+            "type": "array"
+          }
+        }
+      }
+    }
+  ]
+}

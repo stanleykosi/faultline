@@ -1,0 +1,40 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "pnpm install --frozen-lockfile --prod=false",
+  "buildCommand": "pnpm contracts:generate && pnpm build:web",
+  "outputDirectory": "dist/web",
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{contracts/**,config/**,api.routes.json,scripts/initialize-vercel-runtime.mjs,scripts/hosted-private-runtime.mjs}"
+    }
+  },
+  "daemons": {
+    "worker": {
+      "root": ".",
+      "entrypoint": "Dockerfile",
+      "instances": {
+        "iad1": 1
+      },
+      "terminationGracePeriodSeconds": 60
+    }
+  },
+  "routes": [
+    {
+      "src": "^/api(?:/.*)?$",
+      "dest": "/api/index"
+    },
+    {
+      "src": "^/health/.*$",
+      "dest": "/api/index"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/.*$",
+      "dest": "/index.html"
+    }
+  ]
+}

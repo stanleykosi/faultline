@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/agent-response.schema.json",
+  "title": "Faultline agent response",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 2 },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "input_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "stage": {
+      "type": "string",
+      "enum": ["setup", "measure", "explain", "test", "report", "follow_up"]
+    },
+    "message": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+      },
+      "uniqueItems": true,
+      "maxItems": 20
+    },
+    "memory_capsule_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+      },
+      "uniqueItems": true,
+      "maxItems": 5
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "current_belief": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1200
+        },
+        "what_changed": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1200
+        },
+        "hypotheses": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+              "statement": { "type": "string", "minLength": 1, "maxLength": 1000 },
+              "supporting_evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+                },
+                "uniqueItems": true,
+                "maxItems": 10
+              },
+              "contradicting_evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+                },
+                "uniqueItems": true,
+                "maxItems": 10
+              },
+              "memory_capsule_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+                },
+                "uniqueItems": true,
+                "maxItems": 5
+              },
+              "falsifier": { "type": "string", "minLength": 1, "maxLength": 1000 },
+              "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+            },
+            "required": [
+              "title",
+              "statement",
+              "supporting_evidence_ids",
+              "contradicting_evidence_ids",
+              "memory_capsule_ids",
+              "falsifier",
+              "confidence"
+            ]
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 800 },
+          "maxItems": 10
+        }
+      },
+      "required": ["current_belief", "what_changed", "hypotheses", "unknowns"]
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "open_data",
+              "review_metric",
+              "generate_hypotheses",
+              "open_evidence",
+              "open_data_checks",
+              "open_browser_tests",
+              "draft_report",
+              "open_follow_up",
+              "gather_related_evidence",
+              "recall_prior_investigations",
+              "review_results",
+              "draft_test_plan",
+              "schedule_follow_up"
+            ]
+          },
+          "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 800 },
+          "requires_approval": { "const": true },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "template_id": {
+                "type": "string",
+                "enum": [
+                  "release_exposure",
+                  "support_symptoms",
+                  "change_timeline",
+                  "cohort_context",
+                  "contrary_evidence",
+                  "followup_recheck"
+                ]
+              },
+              "query": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "release_id": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "affected_cohort": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "control_cohort": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "test_kind": {
+                "type": "string",
+                "enum": ["data_validation", "controlled_comparison", "external_browser"]
+              }
+            }
+          }
+        },
+        "required": ["kind", "title", "reason", "requires_approval", "parameters"]
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 800 },
+      "maxItems": 5
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 800 },
+      "maxItems": 10
+    }
+  },
+  "required": [
+    "schema_version",
+    "revision_id",
+    "input_hash",
+    "stage",
+    "message",
+    "evidence_ids",
+    "memory_capsule_ids",
+    "analysis",
+    "actions",
+    "questions",
+    "limitations"
+  ]
+}

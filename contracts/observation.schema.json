@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/observation.schema.json",
+  "title": "Faultline observation",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "arm": {
+      "type": "string",
+      "enum": [
+        "known_good",
+        "incident",
+        "candidate"
+      ]
+    },
+    "cohort": {
+      "type": "string",
+      "enum": [
+        "mobile",
+        "desktop"
+      ]
+    },
+    "repeat": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "observed",
+        "blocked",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "oracle_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "build_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "build_digest_after": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "deployment_evidence_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "fixture_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "environment_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "runner_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "actual": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "checkout_completed": {
+              "type": "boolean"
+            },
+            "order_created_count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "error_code": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "checkout_completed",
+            "order_created_count",
+            "error_code"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "arm",
+    "cohort",
+    "repeat",
+    "status",
+    "plan_hash",
+    "oracle_hash",
+    "build_digest",
+    "build_digest_after",
+    "deployment_evidence_hash",
+    "fixture_hash",
+    "environment_hash",
+    "runner_id",
+    "actual"
+  ]
+}

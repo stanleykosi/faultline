@@ -1,0 +1,5 @@
+import type {Workspace} from '../../api';
+export function SettingsNavigation({workspace, current, navigate}: {workspace: Workspace; current: string; navigate: (path: string) => void}) {
+  const choices = [...workspace.role === 'owner' ? [['general', 'Workspace']] : [], ['members', 'Members'], ...workspace.role !== 'viewer' ? [['budgets', 'Usage'], ['models', 'Agent models']] : [], ...workspace.role === 'owner' ? [['policy', 'Limits'], ['privacy', 'Data retention'], ['audit', 'Activity log'], ['diagnostics', 'System status'], ['deletion', 'Delete workspace']] : []];
+  return <nav className="case-section-nav settings-nav" aria-label="Workspace settings sections">{choices.map(([section, label]) => <a key={section} href={`/w/${workspace.id}/settings/${section}`} aria-current={current === section ? 'page' : undefined} onClick={event => {if (!event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) {event.preventDefault(); navigate(`/w/${workspace.id}/settings/${section}`);}}}>{label}</a>)}</nav>;
+}

@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/metric-result.schema.json",
+  "title": "Faultline metric-result",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "metric_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "quality": {
+      "type": "string",
+      "enum": [
+        "complete_attested",
+        "provisional",
+        "incomplete"
+      ]
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "source_guarantee",
+        "operator_attestation",
+        "lateness_assumption",
+        "none"
+      ]
+    },
+    "baseline": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "eligible": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "converted": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "rate": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "interval": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "low": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "high": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "level": {
+                      "const": 0.95
+                    },
+                    "method": {
+                      "const": "wilson_descriptive"
+                    }
+                  },
+                  "required": [
+                    "low",
+                    "high",
+                    "level",
+                    "method"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "strata": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 8,
+              "additionalProperties": false,
+              "patternProperties": {
+                "^[A-Za-z0-9_-]{1,64}$": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "eligible": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "converted": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "rate": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "interval": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "low": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "high": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "level": {
+                              "const": 0.95
+                            },
+                            "method": {
+                              "const": "wilson_descriptive"
+                            }
+                          },
+                          "required": [
+                            "low",
+                            "high",
+                            "level",
+                            "method"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "eligible",
+                    "converted",
+                    "rate",
+                    "interval"
+                  ]
+                }
+              }
+            },
+            "unknown_cohort_count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "eligible",
+            "converted",
+            "rate",
+            "interval",
+            "strata",
+            "unknown_cohort_count"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "comparison": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "eligible": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "converted": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "rate": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "interval": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "low": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "high": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "level": {
+                      "const": 0.95
+                    },
+                    "method": {
+                      "const": "wilson_descriptive"
+                    }
+                  },
+                  "required": [
+                    "low",
+                    "high",
+                    "level",
+                    "method"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "strata": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 8,
+              "additionalProperties": false,
+              "patternProperties": {
+                "^[A-Za-z0-9_-]{1,64}$": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "eligible": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "converted": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "rate": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "interval": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "low": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "high": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "level": {
+                              "const": 0.95
+                            },
+                            "method": {
+                              "const": "wilson_descriptive"
+                            }
+                          },
+                          "required": [
+                            "low",
+                            "high",
+                            "level",
+                            "method"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "eligible",
+                    "converted",
+                    "rate",
+                    "interval"
+                  ]
+                }
+              }
+            },
+            "unknown_cohort_count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "eligible",
+            "converted",
+            "rate",
+            "interval",
+            "strata",
+            "unknown_cohort_count"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "delta_pp": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": -100,
+          "maximum": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "relative_change": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": -1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    }
+  },
+  "required": [
+    "metric_hash",
+    "quality",
+    "basis",
+    "baseline",
+    "comparison",
+    "delta_pp",
+    "relative_change"
+  ]
+}

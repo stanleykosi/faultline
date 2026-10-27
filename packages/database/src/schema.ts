@@ -1,0 +1,8 @@
+import {pgSchema,uuid,text,integer,timestamp,boolean,jsonb,primaryKey,customType} from 'drizzle-orm/pg-core';
+const tenant=pgSchema('faultline');
+export const eventInstant=customType<{data:string;driverData:string}>({dataType:()=> 'timestamptz(6)',fromDriver:value=>value,toDriver:value=>value});
+export const workspaces=tenant.table('workspaces',{id:uuid().primaryKey(),name:text().notNull(),revision:integer().notNull().default(1),created_at:timestamp({withTimezone:true,mode:'string'}).notNull().defaultNow()});
+export const memberships=tenant.table('memberships',{workspace_id:uuid().notNull(),user_id:text().notNull(),role:text().notNull(),revision:integer().notNull().default(1),created_at:timestamp({withTimezone:true,mode:'string'}).notNull().defaultNow()},t=>[primaryKey({columns:[t.workspace_id,t.user_id]})]);
+export const investigations=tenant.table('cases',{id:uuid().primaryKey(),workspace_id:uuid().notNull(),title:text().notNull(),question:text().notNull(),affected_flow:text(),active_revision_id:uuid().notNull(),lifecycle:text().notNull().default('open'),archived:boolean().notNull().default(false),revision:integer().notNull().default(1),created_at:timestamp({withTimezone:true,mode:'string'}).notNull().defaultNow(),updated_at:timestamp({withTimezone:true,mode:'string'}).notNull().defaultNow()});
+export const revisions=tenant.table('case_revisions',{id:uuid().primaryKey(),workspace_id:uuid().notNull(),case_id:uuid().notNull(),parent_id:uuid(),value:jsonb().notNull(),content_hash:text().notNull(),created_at:timestamp({withTimezone:true,mode:'string'}).notNull().defaultNow()});
+

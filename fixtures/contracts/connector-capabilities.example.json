@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "source_kind": "posthog_existing_file_export",
+  "status": "unconfigured",
+  "checked_at": "2026-10-09T12:00:00.000Z",
+  "adapter_version": "posthog-file-export-v1",
+  "read_only": true,
+  "features": [],
+  "unsupported_features": [
+    "automatic_export_creation",
+    "query_export"
+  ],
+  "reason_code": "SOURCE_NOT_CONFIGURED",
+  "provider_version": null
+}

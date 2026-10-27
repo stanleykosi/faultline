@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "attester_key_id": "example-key-not-trusted-in-production",
+  "body": {
+    "workspace_id": "workspace-fixture",
+    "case_id": "case-fixture",
+    "deployment_id": "synthetic-deployment",
+    "build_digest": "f25e103f638abade7ec26339256abb2dacf37e11f54d2cd33e8440c9712e399d",
+    "commit_sha": "0000000000000000000000000000000000000000",
+    "origin": "https://staging.example.invalid",
+    "observed_at": "2026-10-09T12:00:00.000Z",
+    "expires_at": "2026-10-10T12:00:00.000Z",
+    "provenance_evidence_hash": "ffbc2dfc402782325da71132100e74ff511d1585dd80e4ea196ed4bcace3fef2"
+  },
+  "signature": "wJwN8Krc0CSt4uPOv8W6m8hFVRFSgllCLj4cmckJQCOqdana05oK0DBVn5ZzfRxl6RW0A93GuUyXpsii7pyCCw=="
+}

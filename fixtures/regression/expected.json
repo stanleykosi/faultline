@@ -1,0 +1,12 @@
+{
+  "baseline_rate": 0.2,
+  "comparison_rate": 0.11,
+  "delta_pp": -9,
+  "mobile_before": 0.2,
+  "mobile_after": 0.02,
+  "desktop_before": 0.2,
+  "desktop_after": 0.2,
+  "standardized_rate": 0.11,
+  "within_component_pp": -9,
+  "composition_component_pp": 0
+}

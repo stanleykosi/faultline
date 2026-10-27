@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/approval.schema.json",
+  "title": "Faultline approval",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "oracle_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "reviewer_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "reviewer_role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "analyst"
+      ]
+    },
+    "grant_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "revoked": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "plan_hash",
+    "oracle_hash",
+    "workspace_id",
+    "reviewer_id",
+    "reviewer_role",
+    "grant_hash",
+    "expires_at",
+    "revoked"
+  ]
+}

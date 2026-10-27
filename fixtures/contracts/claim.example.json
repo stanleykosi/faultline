@@ -1,0 +1,13 @@
+{
+  "association": "observed",
+  "mechanism": "reproduced",
+  "correction": "validated",
+  "attribution": {
+    "scope": "association_only",
+    "causal_effect": "not_established"
+  },
+  "freshness": "fresh",
+  "coverage_quality": "complete_attested",
+  "scope": "synthetic_fixture",
+  "warning": null
+}

@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/observation-profile.schema.json",
+  "title": "Faultline observation-profile",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "template": {
+      "const": "checkout_receipt_v1"
+    },
+    "success_locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "test_id",
+            "role",
+            "label"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "button",
+            "textbox",
+            "checkbox",
+            "link",
+            "combobox"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ]
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path_template": {
+          "type": "string",
+          "pattern": "^/(?!/)[A-Za-z0-9/_{}.-]+$",
+          "maxLength": 300
+        },
+        "method": {
+          "const": "GET"
+        },
+        "credential_ref": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completed_pointer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "order_count_pointer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "error_code_pointer": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_response_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        }
+      },
+      "required": [
+        "path_template",
+        "method",
+        "credential_ref",
+        "completed_pointer",
+        "order_count_pointer",
+        "error_code_pointer",
+        "max_response_bytes"
+      ]
+    },
+    "incident_error_code": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "symptom_evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+      },
+      "minItems": 1,
+      "maxItems": 20
+    },
+    "sandbox_only": {
+      "const": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "profile_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "workspace_id",
+    "case_id",
+    "revision_id",
+    "template",
+    "success_locator",
+    "receipt",
+    "incident_error_code",
+    "symptom_evidence_ids",
+    "sandbox_only",
+    "created_at",
+    "reviewed_by",
+    "profile_hash"
+  ]
+}

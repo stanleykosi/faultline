@@ -1,0 +1,14 @@
+{
+  "extraction_status": "complete",
+  "basis": "operator_attestation",
+  "covered_start": "2026-09-01T00:00:00.000Z",
+  "covered_end": "2026-09-03T00:30:00.000Z",
+  "event_watermark": "2026-09-03T00:30:00.000Z",
+  "attestation": "Original deterministic synthetic data; complete by construction. This is not external-source evidence.",
+  "event_time_intervals": [
+    {
+      "start": "2026-09-01T00:00:00.000Z",
+      "end": "2026-09-03T00:30:00.000Z"
+    }
+  ]
+}

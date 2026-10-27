@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/metric.schema.json",
+  "title": "Faultline metric",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "template": {
+      "const": "session_conversion_v1"
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "unit": {
+      "const": "session"
+    },
+    "entry_event": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "success_event": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "horizon_seconds": {
+      "const": 1800
+    },
+    "segment_property": {
+      "const": "device"
+    },
+    "cohorts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "windows": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "end": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            }
+          },
+          "required": [
+            "start",
+            "end"
+          ]
+        },
+        "comparison": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "end": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            }
+          },
+          "required": [
+            "start",
+            "end"
+          ]
+        }
+      },
+      "required": [
+        "baseline",
+        "comparison"
+      ]
+    },
+    "exclusion_rule": {
+      "const": "entry_excluded_false"
+    },
+    "timezone": {
+      "const": "UTC"
+    }
+  },
+  "required": [
+    "version",
+    "template",
+    "source_id",
+    "unit",
+    "entry_event",
+    "success_event",
+    "horizon_seconds",
+    "segment_property",
+    "cohorts",
+    "windows",
+    "exclusion_rule",
+    "timezone"
+  ]
+}

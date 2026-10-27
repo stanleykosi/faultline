@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/build-attestation.schema.json",
+  "title": "Faultline build-attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "attester_key_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workspace_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+        },
+        "case_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+        },
+        "deployment_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+        },
+        "build_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        "provenance_evidence_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "workspace_id",
+        "case_id",
+        "deployment_id",
+        "build_digest",
+        "commit_sha",
+        "origin",
+        "observed_at",
+        "expires_at",
+        "provenance_evidence_hash"
+      ]
+    },
+    "signature": {
+      "type": "string",
+      "contentEncoding": "base64",
+      "minLength": 64,
+      "maxLength": 256
+    }
+  },
+  "required": [
+    "schema_version",
+    "attester_key_id",
+    "body",
+    "signature"
+  ]
+}

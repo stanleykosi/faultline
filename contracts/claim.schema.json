@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/claim.schema.json",
+  "title": "Faultline claim",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "association": {
+      "type": "string",
+      "enum": [
+        "not_established",
+        "observed"
+      ]
+    },
+    "mechanism": {
+      "type": "string",
+      "enum": [
+        "untested",
+        "reproduced",
+        "not_reproduced",
+        "inconclusive"
+      ]
+    },
+    "correction": {
+      "type": "string",
+      "enum": [
+        "not_tested",
+        "validated",
+        "failed",
+        "inconclusive"
+      ]
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "const": "association_only"
+        },
+        "causal_effect": {
+          "const": "not_established"
+        }
+      },
+      "required": [
+        "scope",
+        "causal_effect"
+      ]
+    },
+    "freshness": {
+      "type": "string",
+      "enum": [
+        "fresh",
+        "stale"
+      ]
+    },
+    "coverage_quality": {
+      "type": "string",
+      "enum": [
+        "complete_attested",
+        "provisional",
+        "incomplete"
+      ]
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "synthetic_fixture",
+        "specified_snapshot_and_test_environment"
+      ]
+    },
+    "warning": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "LATE_ARRIVAL_ASSUMPTION"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "association",
+    "mechanism",
+    "correction",
+    "attribution",
+    "freshness",
+    "coverage_quality",
+    "scope",
+    "warning"
+  ]
+}

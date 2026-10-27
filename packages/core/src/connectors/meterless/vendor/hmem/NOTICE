@@ -1,0 +1,19 @@
+Meterless H-MEM reference implementation
+
+Vendored from Meterless commit 0aa7417ba5c826396d91e891328be78c45e6fbf6.
+Source archive SHA-256:
+a7b04f185cf4e0c03ddae3324bfda072cd39cfc7f663d0aa6d810ea68b57c20c
+
+The upstream `engines/hmem/reference/src` TypeScript implementation is copied
+here under the accompanying Apache License 2.0. Faultline made two compiler-only
+adaptations to every vendored source file:
+
+1. Relative TypeScript import/export suffixes changed from `.ts` to `.js` so
+   this repository's NodeNext compilation resolves emitted JavaScript.
+2. A leading `// @ts-nocheck` notice was added because Faultline enables
+   `noUncheckedIndexedAccess`; the pinned upstream project does not. Its own
+   strict TypeScript configuration succeeds without that additional option.
+
+No runtime engine behavior was changed. The focused adapter test removes the
+leading notice, reverses the import suffix change, and checks each resulting
+source file against its pinned upstream SHA-256 digest.

@@ -1,0 +1,19 @@
+{
+  "arm": "known_good",
+  "cohort": "mobile",
+  "repeat": 1,
+  "status": "observed",
+  "plan_hash": "cff011d66ad47f7e665373ff688ab10d81e35c6c0816b346c43e210bb09e6af0",
+  "oracle_hash": "f61ff4b1d14d4ef3f56c3ab18417d0dc2e7d78716c84971ac45201b865a6d607",
+  "build_digest": "f25e103f638abade7ec26339256abb2dacf37e11f54d2cd33e8440c9712e399d",
+  "build_digest_after": "f25e103f638abade7ec26339256abb2dacf37e11f54d2cd33e8440c9712e399d",
+  "deployment_evidence_hash": "446e38e1418c331fa42760a5a6f8fff080ccca63927b97c6c21b1420276c04bc",
+  "fixture_hash": "8d4ba030b232df17d38eb49aae5ffa4741f4e74f68fbc400b0d10bd9fef404b8",
+  "environment_hash": "303c3dc6afb9be3a283de32d0b7daa55b08850b8a3c056d4ad097ac23cc5462c",
+  "runner_id": "reference-kernel",
+  "actual": {
+    "checkout_completed": true,
+    "order_created_count": 1,
+    "error_code": null
+  }
+}

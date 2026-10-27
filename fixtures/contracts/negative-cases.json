@@ -1,0 +1,249 @@
+{
+  "cases": [
+    {
+      "id": "wrong-unit",
+      "base_fixture": "metric",
+      "path": "/unit",
+      "value": "person",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "unfrozen-horizon",
+      "base_fixture": "metric",
+      "path": "/horizon_seconds",
+      "value": 3600,
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "unbounded-sql",
+      "base_fixture": "metric",
+      "path": "/sql",
+      "value": "select * from everything",
+      "op": "add",
+      "expected": "invalid"
+    },
+    {
+      "id": "lost-event-precision",
+      "base_fixture": "canonical-event",
+      "path": "/occurred_at",
+      "value": "2026-09-01T00:00:00.000Z",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "missing-session",
+      "base_fixture": "canonical-event",
+      "path": "/session_id",
+      "value": "",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "invented-quality",
+      "base_fixture": "coverage",
+      "path": "/extraction_status",
+      "value": "verified",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "unsafe-file-path",
+      "base_fixture": "snapshot",
+      "path": "/files/0/path",
+      "value": "../secret",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "missing-evidence-hash",
+      "base_fixture": "evidence",
+      "path": "/content_hash",
+      "value": null,
+      "op": "remove",
+      "expected": "invalid"
+    },
+    {
+      "id": "cause-verdict-in-proposal",
+      "base_fixture": "hypothesis",
+      "path": "/causal_effect",
+      "value": "proven",
+      "op": "add",
+      "expected": "invalid"
+    },
+    {
+      "id": "shell-in-browser",
+      "base_fixture": "browser-plan",
+      "path": "/actions/0",
+      "value": {
+        "op": "shell",
+        "command": "echo forbidden"
+      },
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "too-few-repeats",
+      "base_fixture": "browser-plan",
+      "path": "/repeats",
+      "value": 1,
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "mismatched-objective-policy",
+      "base_fixture": "browser-plan",
+      "path": "/objective",
+      "value": "mechanism",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "weakened-oracle",
+      "base_fixture": "oracle",
+      "path": "/assertions",
+      "value": [
+        "checkout_completed"
+      ],
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "llm-sql-test",
+      "base_fixture": "analytic-plan",
+      "path": "/kind",
+      "value": "raw_sql",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "observation-wrong-hash",
+      "base_fixture": "observation",
+      "path": "/build_digest",
+      "value": "latest",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "fixture-claims-production",
+      "base_fixture": "verification-result",
+      "path": "/production_claim_eligible",
+      "value": true,
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "validated-but-failed",
+      "base_fixture": "verification-result",
+      "path": "/outcome",
+      "value": "failed",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "aggregate-cause",
+      "base_fixture": "claim",
+      "path": "/attribution/causal_effect",
+      "value": "proven",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "model-verdict-field",
+      "base_fixture": "model-response",
+      "path": "/verification_status",
+      "value": "passed",
+      "op": "add",
+      "expected": "invalid"
+    },
+    {
+      "id": "invented-adapter",
+      "base_fixture": "connector-capabilities",
+      "path": "/source_kind",
+      "value": "all_services",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "report-without-limitations",
+      "base_fixture": "report",
+      "path": "/limitations",
+      "value": [],
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "unscoped-evidence-finding",
+      "base_fixture": "report",
+      "path": "/findings/0/evidence_ids",
+      "value": [],
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "viewer-approval",
+      "base_fixture": "approval",
+      "path": "/reviewer_role",
+      "value": "viewer",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "job-magic-pass",
+      "base_fixture": "job",
+      "path": "/status",
+      "value": "passed",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "metric-rate-over-one",
+      "base_fixture": "metric-result",
+      "path": "/baseline/rate",
+      "value": 1.1,
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "bad-release-digest",
+      "base_fixture": "release-manifest",
+      "path": "/images/0/digest",
+      "value": "latest",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "client-claims-source-guarantee",
+      "base_fixture": "coverage-declaration",
+      "path": "/basis",
+      "value": "source_guarantee",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "empty-coverage-attestation",
+      "base_fixture": "coverage-declaration",
+      "path": "/statement",
+      "value": "",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "receipt-can-mutate",
+      "base_fixture": "observation-profile",
+      "path": "/receipt/method",
+      "value": "POST",
+      "op": "replace",
+      "expected": "invalid"
+    },
+    {
+      "id": "empty-build-signature",
+      "base_fixture": "build-attestation",
+      "path": "/signature",
+      "value": "",
+      "op": "replace",
+      "expected": "invalid"
+    }
+  ]
+}

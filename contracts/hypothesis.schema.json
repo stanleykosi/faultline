@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/hypothesis.schema.json",
+  "title": "Faultline hypothesis",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "mechanism_description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "accepted",
+        "rejected",
+        "needs_evidence"
+      ]
+    },
+    "supporting_evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+      },
+      "minItems": 0,
+      "maxItems": 50
+    },
+    "contradicting_evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+      },
+      "minItems": 0,
+      "maxItems": 50
+    },
+    "missing_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      },
+      "minItems": 0,
+      "maxItems": 20
+    },
+    "falsifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "proposed_test_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "data_quality",
+          "cohort_change",
+          "mix_shift",
+          "temporal_alignment",
+          "negative_control",
+          "mechanism",
+          "correction"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "human",
+        "model"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "workspace_id",
+    "case_id",
+    "revision_id",
+    "title",
+    "statement",
+    "mechanism_description",
+    "status",
+    "supporting_evidence_ids",
+    "contradicting_evidence_ids",
+    "missing_evidence",
+    "falsifier",
+    "proposed_test_kinds",
+    "origin",
+    "priority"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "grant-fixture",
+  "workspace_id": "workspace-fixture",
+  "origins": [
+    "http://127.0.0.1:4301",
+    "http://127.0.0.1:4302",
+    "http://127.0.0.1:4303"
+  ],
+  "expires_at": "2026-12-31T23:59:59.000Z",
+  "revoked": false
+}

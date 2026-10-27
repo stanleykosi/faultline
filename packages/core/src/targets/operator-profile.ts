@@ -1,0 +1,34 @@
+import {createPublicKey} from 'node:crypto';
+import {checkedUrl} from '../network/http.js';
+import {demand} from '../errors.js';
+import {hash} from '../canonical.js';
+export type OperatorKind='network'|'runner'|'environment'|'attester';
+export interface OperatorRegistration {schema_version:1;workspace_id:string;kind:OperatorKind;id:string;profile:Record<string,unknown>}
+const identifier=/^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/,digest=/^[a-f0-9]{64}$/,uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+function object(value:unknown,required:string[]):asserts value is Record<string,unknown>{demand(value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join(',')===[...required].sort().join(','),'INVALID_OPERATOR_PROFILE','Use the exact finite operator profile fields.');}
+function text(value:unknown,max=200){demand(typeof value==='string'&&value.length>0&&value.length<=max&&!/[\x00-\x1f\x7f]/.test(value),'INVALID_OPERATOR_PROFILE','A bounded plain value is required.');return value;}
+function id(value:unknown){demand(identifier.test(text(value,128)),'INVALID_OPERATOR_PROFILE','A finite identity is required.');return value as string;}
+function sha(value:unknown){demand(digest.test(text(value,64)),'INVALID_OPERATOR_PROFILE','An immutable SHA256 is required.');}
+function array(value:unknown,max:number,validate:(item:unknown)=>unknown,min=1):asserts value is unknown[]{demand(Array.isArray(value)&&value.length>=min&&value.length<=max,'INVALID_OPERATOR_PROFILE','A finite profile list is required.');value.forEach(validate);demand(new Set(value.map(item=>hash(item))).size===value.length,'INVALID_OPERATOR_PROFILE','Repeated profile entries are unavailable.');}
+export function stagingOrigin(value:unknown):string{const raw=text(value,2048);let url:URL;try{url=new URL(raw);}catch{demand(false,'UNSAFE_TARGET_ORIGIN','A canonical HTTPS origin is required.');}demand(url!.origin===raw,'UNSAFE_TARGET_ORIGIN','Target authority is an exact origin, without a path, credentials or query.');checkedUrl(raw,[raw]);return raw;}
+function pathPrefix(value:unknown){const raw=text(value,300);demand(/^\/(?!\/)[A-Za-z0-9/_-]*$/.test(raw)&&!raw.includes('//'),'INVALID_OPERATOR_PROFILE','A finite literal same-origin path prefix is required.');}
+export function validateOperatorRegistration(value:unknown,nowMs=Date.now()):OperatorRegistration{
+ object(value,['schema_version','workspace_id','kind','id','profile']);demand(value.schema_version===1&&typeof value.workspace_id==='string'&&uuid.test(value.workspace_id),'INVALID_OPERATOR_PROFILE','Register within one exact workspace.');id(value.id);
+ demand(['network','runner','environment','attester'].includes(value.kind as string),'INVALID_OPERATOR_PROFILE','Unsupported operator resource kind.');const kind=value.kind as OperatorKind,p=value.profile;
+ if(kind==='network'){
+  object(p,['origins','path_prefixes','credential_refs','deny_private_addresses','max_response_bytes']);array(p.origins,10,stagingOrigin);array(p.path_prefixes,20,pathPrefix);array(p.credential_refs,20,id,0);demand(p.deny_private_addresses===true&&Number.isSafeInteger(p.max_response_bytes)&&Number(p.max_response_bytes)>0&&Number(p.max_response_bytes)<=65536,'INVALID_OPERATOR_PROFILE','Network profiles require private-address denial and finite receipt bytes.');
+ }else if(kind==='runner'){
+  object(p,['endpoint','implementation_digest','transport_ca_sha256','peer_certificate_sha256','network_profile_id','isolation','isolation_evidence_hash']);stagingOrigin(p.endpoint);sha(p.implementation_digest);sha(p.transport_ca_sha256);sha(p.peer_certificate_sha256);id(p.network_profile_id);demand(['gvisor','equivalent'].includes(p.isolation as string),'INVALID_OPERATOR_PROFILE','External runners require a declared hardened isolation boundary.');if(p.isolation_evidence_hash!==null)sha(p.isolation_evidence_hash);
+ }else if(kind==='environment'){
+  object(p,['runner_id','engine','engine_version','viewports','timezone','locale','feature_flags']);id(p.runner_id);demand(p.engine==='chromium'&&p.timezone==='UTC','INVALID_OPERATOR_PROFILE','The registered V1 environment requires Chromium and UTC.');text(p.engine_version,100);text(p.locale,50);object(p.viewports,['mobile','desktop']);for(const viewport of Object.values(p.viewports)){object(viewport,['width','height']);demand(['width','height'].every(key=>Number.isInteger(viewport[key])&&Number(viewport[key])>=200&&Number(viewport[key])<=4096),'INVALID_OPERATOR_PROFILE','Use bounded exact cohort viewports.');}array(p.feature_flags,20,item=>text(item,100),0);
+ }else{
+  object(p,['key_id','public_key_pem','deployment_scopes','valid_from','expires_at','purposes','observer']);id(p.key_id);const pem=p.public_key_pem;demand(typeof pem==='string'&&pem.length<=4096&&/^-----BEGIN PUBLIC KEY-----\r?\n[A-Za-z0-9+/=\r\n]+-----END PUBLIC KEY-----\r?\n?$/.test(pem),'INVALID_ATTESTER_KEY','Import public PEM only; private signing keys stay outside Faultline.');let publicKey;try{publicKey=createPublicKey(pem);}catch{demand(false,'INVALID_ATTESTER_KEY','A valid operator Ed25519 public key is required.');}demand(publicKey!.asymmetricKeyType==='ed25519','INVALID_ATTESTER_KEY','Only Ed25519 build/deployment signatures are accepted.');
+  const instant=(value:unknown)=>{const raw=text(value,24),ms=Date.parse(raw);demand(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(raw)&&Number.isFinite(ms)&&new Date(ms).toISOString()===raw,'INVALID_ATTESTER_VALIDITY','Use real canonical UTC millisecond validity instants.');return ms;};
+  demand(Number.isSafeInteger(nowMs)&&instant(p.valid_from)<=nowMs&&instant(p.expires_at)>nowMs,'INVALID_ATTESTER_VALIDITY','The scoped operator key must currently be valid.');
+  array(p.deployment_scopes,100,item=>{object(item,['deployment_id','origin','repository_id','environment_id']);id(item.deployment_id);stagingOrigin(item.origin);id(item.repository_id);id(item.environment_id);});
+  demand(new Set(p.deployment_scopes.map(item=>(item as Record<string,unknown>).deployment_id)).size===p.deployment_scopes.length,'INVALID_OPERATOR_PROFILE','Each deployment has one exact repository/environment/origin scope.');
+  array(p.purposes,2,item=>demand(item==='build'||item==='deployment','INVALID_OPERATOR_PROFILE','A finite attester purpose is required.'));object(p.observer,['adapter_id','adapter_version','configuration_hash','independence']);id(p.observer.adapter_id);text(p.observer.adapter_version,100);sha(p.observer.configuration_hash);demand(p.observer.independence==='deployment_system','INVALID_OPERATOR_PROFILE','Target self-reporting is not independent deployment provenance.');
+ }
+ // Return an owned JSON copy; registered metadata cannot be mutated by its caller.
+ return JSON.parse(JSON.stringify(value)) as OperatorRegistration;
+}

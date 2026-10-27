@@ -1,0 +1,20 @@
+[
+  {
+    "id": "r100",
+    "published_at": "2026-08-31T23:00:00.000Z",
+    "description": "Known-good checkout",
+    "deployment_status": "not_proven_by_release_record"
+  },
+  {
+    "id": "r101",
+    "published_at": "2026-09-02T00:00:00.000Z",
+    "description": "Responsive payment-button refactor",
+    "deployment_status": "not_proven_by_release_record"
+  },
+  {
+    "id": "r102",
+    "published_at": "2026-09-03T00:00:00.000Z",
+    "description": "Candidate attaches handler to both viewport buttons",
+    "deployment_status": "not_proven_by_release_record"
+  }
+]

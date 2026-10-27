@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "job-not-run",
+  "workspace_id": "workspace-fixture",
+  "case_id": "case-fixture",
+  "kind": "browser_test",
+  "status": "queued",
+  "progress_completed": 0,
+  "progress_total": 18,
+  "input_hash": "963c3e86ec8597eb379d7fdc47f534b3468d6d9678ff7fe6e8eddc4f19a97db6",
+  "attempt": 1,
+  "created_at": "2026-10-09T12:00:00.000Z",
+  "updated_at": "2026-10-09T12:00:00.000Z",
+  "waiting_reason": null,
+  "result_ref": null,
+  "error_code": null
+}

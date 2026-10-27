@@ -1,0 +1,21 @@
+import {test}from'node:test';import assert from'node:assert/strict';import fs from'node:fs/promises';import pg from'pg';import{randomUUID}from'node:crypto';
+import{transaction,pool,authPool}from'../../packages/database/src/client.js';import{createWorkspace}from'../../packages/core/src/workspaces/service.js';import{createCase}from'../../packages/core/src/cases/service.js';import{enqueue,restartJob,getWorkspaceJob}from'../../packages/core/src/jobs/service.js';
+test('real failed execution retries as a separate immutable run, charges both attempts and cannot reset revision allowance',{timeout:45000},async()=>{
+ const ready=await fetch('http://localhost:3000/health/ready');assert.equal(ready.status,200,'Actual worker readiness required before this execution');
+ const dev=JSON.parse(await fs.readFile('.runtime/development-config.json','utf8')),admin=new pg.Pool({connectionString:process.env.MIGRATION_DATABASE_URL});let receipt;
+ try{const principal=(await admin.query('SELECT id,email,name FROM auth."user" WHERE email=$1',[dev.ownerEmail])).rows[0];assert(principal);
+ const workspace=await createWorkspace(principal,'Generated retry-budget acceptance '+randomUUID().slice(0,8),randomUUID()),item=await createCase(workspace.id,principal.id,randomUUID(),{title:'Generated actual failed handler',question:'Does manual retry preserve terminal history and charge a new run?',affected_flow:'Only generated invalid dependency scope'}),wid=workspace.id;
+ await transaction(wid,async tx=>{await tx.query('INSERT INTO faultline.budgets(workspace_id,case_id,revision_id,ceiling) VALUES($1,$2,$3,2)',[wid,item.id,item.active_revision_id]);});
+ const input={actor_id:principal.id,import_id:randomUUID(),mapping_id:randomUUID(),normalized_key:'0'.repeat(64),raw_key:'1'.repeat(64),coverage_declaration:{}};
+ const first=await transaction(wid,tx=>enqueue(tx,wid,item.id,item.active_revision_id,'import_commit',input));
+ const wait=async(id:string)=>{for(let i=0;i<120;i++){const row=await getWorkspaceJob(wid,principal.id,id);if(['failed','succeeded','cancelled','waiting_for_input'].includes(row.status))return row;await new Promise(r=>setTimeout(r,200));}throw Error('Actual worker failed-handler deadline');};
+ const failed=await wait(first.job_id);assert.equal(failed.status,'failed');assert.equal(failed.attempt,1);assert(failed.error_code);
+ const key=randomUUID(),retry=await restartJob(wid,principal.id,key,first.job_id,String(failed.attempt),'retry'),replay=await restartJob(wid,principal.id,key,first.job_id,String(failed.attempt),'retry');
+ assert.equal(retry.job_id,replay.job_id);assert.notEqual(retry.job_id,first.job_id);assert.equal(retry.retry_of,first.job_id);
+ const second=await wait(retry.job_id);assert.equal(second.status,'failed');assert.equal(second.retry_of,first.job_id);assert.equal((await getWorkspaceJob(wid,principal.id,first.job_id)).status,'failed');
+ const rows=(await admin.query('SELECT id,input_hash,input,status,retry_of FROM faultline.jobs WHERE workspace_id=$1 AND case_id=$2 ORDER BY created_at',[wid,item.id])).rows;assert.equal(rows.length,2);assert.equal(rows[0].input_hash,rows[1].input_hash);assert.deepEqual(rows[0].input,rows[1].input);
+ const budget=(await admin.query('SELECT reserved,spent,ceiling FROM faultline.budgets WHERE workspace_id=$1 AND case_id=$2',[wid,item.id])).rows[0];assert.deepEqual(budget,{reserved:0,spent:2,ceiling:2});
+ await assert.rejects(restartJob(wid,principal.id,randomUUID(),second.id,String(second.attempt),'retry'),(e:unknown)=>!!e&&typeof e==='object'&&'code'in e&&e.code==='BUDGET_EXHAUSTED');
+ receipt={status:'passed',at:new Date().toISOString(),scope:'Generated real PostgreSQL+worker failed dependency only; no main fixture modified.',workspace_id:wid,case_id:item.id,original_job_id:first.job_id,retry_job_id:retry.job_id,budget,negative:'third manual retry rejected at revision ceiling',terminal_history_preserved:true,immutable_input_hash:rows[0].input_hash};await fs.writeFile('reports/application/consolidated/retry-budget.json',JSON.stringify(receipt,null,2));console.log('Separate manual retry, terminal history, identical frozen input, actual per-run spending and independent exhausted-budget negative passed.');
+ }finally{await admin.end();await pool?.end();await authPool?.end();}
+});

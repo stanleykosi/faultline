@@ -1,0 +1,15 @@
+import type {FaultlineConnectorCapabilities, FaultlineModelResponse} from '../../../../../packages/contracts/src/generated';
+
+export type ZetarisViewRole = 'sessions' | 'releases' | 'support' | 'changes';
+export type ZetarisColumn = 'record_id' | 'occurred_at' | 'release_id' | 'session_id' | 'cohort' | 'case_key' | 'flow_key' | 'conversion_status' | 'symptom_ref' | 'summary';
+export type ZetarisApprovedView = {id: string; role: ZetarisViewRole; identifier: string; columns: Partial<Record<ZetarisColumn, string>>};
+export type ZetarisSourceConfig = {kind: 'zetaris_federated_evidence'; schema_version: 1; protocol: 'faultline-zetaris-v1'; adapter_id: string; approved_origin: string; contract_hash: string; approved_account_scope: string; approved_views: ZetarisApprovedView[]; approved_view_ids: string[]};
+export type SourceConfig = {kind: 'posthog_existing_file_export'; app_host: string; project_id: string} | {kind: 'github_changes'; api_origin: string; owner: string; repo: string} | ZetarisSourceConfig;
+export interface MaskedCredential {secret_id: string; active_version: number; revision?: number; hint: string; revoked: boolean;}
+export interface Source {id: string; kind: SourceConfig['kind'] | 'file'; name: string; config: SourceConfig | null; revision?: number; credential: MaskedCredential | null; capabilities: FaultlineConnectorCapabilities | null; status: string; reason_code?: string | null; disconnected: boolean; repository_id?: number | null;}
+export interface ExportDeclaration {id: string; declaration_hash: string; value: {statement: string; export_runs: Record<string, unknown>[]}; created_at: string;}
+export interface ProviderOperation {id: string; kind: 'source_probe' | 'model_probe'; resource_id: string; status: string; attempt: number; result: Record<string, unknown> | null; error_code: string | null; created_at: string; updated_at: string;}
+export interface ModelProfile {id: string; name: string; provider: 'ollama' | 'openai_compatible' | 'openrouter'; base_url: string; model_name: string; revision: number; credential: MaskedCredential | null; credential_source?: 'server' | 'workspace'; profile_hash: string; capabilities: FaultlineConnectorCapabilities | null; status: string; reason_code?: string | null;}
+export interface ModelProposal {id: string; profile_id: string; profile_hash: string; input_hash: string; evidence_hashes: Record<string, string>; revision_id: string; value: FaultlineModelResponse; freshness: 'fresh' | 'stale'; draft_only: true; created_at: string; accepted_item_indexes?: number[];}
+export function rememberProvider(name: string, value: string) {const url = new URL(location.href); if (value) url.searchParams.set(name, value); else url.searchParams.delete(name); history.replaceState(null, '', url.pathname + url.search);}
+export function sourceReady(value: Source) {return !!value.config && !!value.credential && !value.disconnected && !value.credential.revoked && value.status === 'available' && value.capabilities?.status === 'available';}

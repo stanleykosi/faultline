@@ -1,0 +1,10 @@
+{
+  "plan_hash": "cff011d66ad47f7e665373ff688ab10d81e35c6c0816b346c43e210bb09e6af0",
+  "oracle_hash": "f61ff4b1d14d4ef3f56c3ab18417d0dc2e7d78716c84971ac45201b865a6d607",
+  "workspace_id": "workspace-fixture",
+  "reviewer_id": "fixture-reviewer",
+  "reviewer_role": "analyst",
+  "grant_hash": "725dad3444bcfcbde78c6e0aba9a44ae601bc4d716c0e9db92ce354b81d2e9cb",
+  "expires_at": "2026-12-31T23:59:59.000Z",
+  "revoked": false
+}

@@ -1,0 +1,10 @@
+{
+  "source_id": "synthetic-analytics",
+  "event_id": "regression-baseline-mobile-0000-entry",
+  "session_id": "regression-baseline-mobile-0000",
+  "event_name": "checkout_started",
+  "occurred_at": "2026-09-01T01:00:00.000000Z",
+  "device": "mobile",
+  "excluded": false,
+  "release_id": "r100"
+}

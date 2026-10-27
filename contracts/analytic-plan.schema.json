@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/analytic-plan.schema.json",
+  "title": "Faultline analytic-plan",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "hypothesis_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "data_quality",
+        "cohort_change",
+        "mix_shift",
+        "temporal_alignment",
+        "negative_control"
+      ]
+    },
+    "metric_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+      },
+      "minItems": 1,
+      "maxItems": 100
+    },
+    "cohorts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "minItems": 0,
+      "maxItems": 8
+    },
+    "expected_direction": {
+      "type": "string",
+      "enum": [
+        "increase",
+        "decrease",
+        "unchanged",
+        "unknown"
+      ]
+    },
+    "minimum_denominator": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100000
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "workspace_id",
+    "case_id",
+    "revision_id",
+    "hypothesis_id",
+    "kind",
+    "metric_hash",
+    "snapshot_hash",
+    "evidence_ids",
+    "cohorts",
+    "expected_direction",
+    "minimum_denominator",
+    "purpose"
+  ]
+}

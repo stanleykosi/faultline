@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "revision_id": "revision-agent",
+  "input_hash": "b8198524f58e72b56283ab71ebddada22840f108b46ef7165bb3fca9919c5558",
+  "stage": "setup",
+  "message": "Review the saved data before selecting a cause.",
+  "evidence_ids": [],
+  "memory_capsule_ids": [],
+  "analysis": {
+    "current_belief": "The investigation needs reviewed data before explanations can be compared.",
+    "what_changed": "No measured comparison is available yet.",
+    "hypotheses": [],
+    "unknowns": [
+      "The affected user journey and measured change are not established."
+    ]
+  },
+  "actions": [
+    {
+      "kind": "open_data",
+      "title": "Add data",
+      "reason": "The investigation needs reviewed source records.",
+      "requires_approval": true,
+      "parameters": {}
+    }
+  ],
+  "questions": [
+    "Which user journey changed?"
+  ],
+  "limitations": [
+    "No measured comparison is available."
+  ]
+}

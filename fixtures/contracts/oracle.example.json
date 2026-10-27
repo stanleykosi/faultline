@@ -1,0 +1,25 @@
+{
+  "version": "checkout_completion_v1",
+  "arms": [
+    "known_good",
+    "incident",
+    "candidate"
+  ],
+  "cohorts": [
+    "mobile",
+    "desktop"
+  ],
+  "repeats": 3,
+  "assertions": [
+    "checkout_completed",
+    "order_created_count",
+    "error_code"
+  ],
+  "required_controls": [
+    "known_good_mobile",
+    "known_good_desktop",
+    "incident_desktop",
+    "candidate_desktop"
+  ],
+  "scope": "Controlled synthetic checkout only; no aggregate causal effect."
+}

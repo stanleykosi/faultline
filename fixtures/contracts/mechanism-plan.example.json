@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "workspace_id": "workspace-fixture",
+  "case_id": "case-fixture",
+  "revision_id": "revision-1",
+  "hypothesis_id": "hyp-mobile-handler",
+  "objective": "mechanism",
+  "mode": "trusted_fixture",
+  "policy_version": "checkout_mechanism_v1",
+  "oracle_hash": "a784f631f14c6e563a87d77e161b4557e7f376f5504a28badc62206b68b96667",
+  "metric_hash": "25e88e0d2448f070ea12b1afb686989a5f00133ff2fdcbe65f838492bcc508ca",
+  "snapshot_hash": "b7b74494ec2dce465235f90dee685bc18212591b2fb13e521722d2435f927d35",
+  "fixture_hash": "8d4ba030b232df17d38eb49aae5ffa4741f4e74f68fbc400b0d10bd9fef404b8",
+  "environment_hash": "303c3dc6afb9be3a283de32d0b7daa55b08850b8a3c056d4ad097ac23cc5462c",
+  "runner_id": "reference-kernel",
+  "repeats": 3,
+  "cohorts": [
+    "mobile",
+    "desktop"
+  ],
+  "actions": [
+    {
+      "op": "navigate",
+      "path": "/"
+    },
+    {
+      "op": "click",
+      "locator": {
+        "kind": "test_id",
+        "value": "pay"
+      }
+    }
+  ],
+  "arms": [
+    {
+      "arm": "known_good",
+      "origin": "http://127.0.0.1:4301",
+      "build_digest": "f25e103f638abade7ec26339256abb2dacf37e11f54d2cd33e8440c9712e399d",
+      "deployment_evidence_hash": "446e38e1418c331fa42760a5a6f8fff080ccca63927b97c6c21b1420276c04bc"
+    },
+    {
+      "arm": "incident",
+      "origin": "http://127.0.0.1:4302",
+      "build_digest": "f5f0c60a3e8dc523943d7b27aa9250b3e420404a5a4cd1d0a206aea5b09926b3",
+      "deployment_evidence_hash": "cffa81710f5ee622be13e72ed900c6b6f48aaf3bca6e9a97b7d73d88e9551cfa"
+    }
+  ]
+}

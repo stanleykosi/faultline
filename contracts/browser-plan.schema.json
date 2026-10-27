@@ -1,0 +1,478 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/browser-plan.schema.json",
+  "title": "Faultline browser-plan",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "hypothesis_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "objective": {
+      "type": "string",
+      "enum": [
+        "mechanism",
+        "correction"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "trusted_fixture",
+        "verified_staging",
+        "exploratory"
+      ]
+    },
+    "policy_version": {
+      "type": "string",
+      "enum": [
+        "checkout_mechanism_v1",
+        "checkout_completion_v1"
+      ]
+    },
+    "oracle_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "metric_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "fixture_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "environment_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "runner_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "repeats": {
+      "const": 3
+    },
+    "cohorts": {
+      "const": [
+        "mobile",
+        "desktop"
+      ]
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "navigate"
+              },
+              "path": {
+                "type": "string",
+                "maxLength": 1000,
+                "pattern": "^/(?!/)[A-Za-z0-9/_.?=&%-]*$"
+              }
+            },
+            "required": [
+              "op",
+              "path"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "click"
+              },
+              "locator": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "test_id",
+                      "role",
+                      "label"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "button",
+                      "textbox",
+                      "checkbox",
+                      "link",
+                      "combobox"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "locator"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "fill"
+              },
+              "locator": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "test_id",
+                      "role",
+                      "label"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "button",
+                      "textbox",
+                      "checkbox",
+                      "link",
+                      "combobox"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ]
+              },
+              "value_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+              }
+            },
+            "required": [
+              "op",
+              "locator",
+              "value_ref"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "wait_for"
+              },
+              "locator": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "test_id",
+                      "role",
+                      "label"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "button",
+                      "textbox",
+                      "checkbox",
+                      "link",
+                      "combobox"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ]
+              },
+              "timeout_ms": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "op",
+              "locator",
+              "timeout_ms"
+            ]
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 30
+    },
+    "arms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "arm": {
+            "type": "string",
+            "enum": [
+              "known_good",
+              "incident",
+              "candidate"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 1000
+          },
+          "build_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "deployment_evidence_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "arm",
+          "origin",
+          "build_digest",
+          "deployment_evidence_hash"
+        ]
+      },
+      "minItems": 2,
+      "maxItems": 3
+    },
+    "observation_profile_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "version",
+    "workspace_id",
+    "case_id",
+    "revision_id",
+    "hypothesis_id",
+    "objective",
+    "mode",
+    "policy_version",
+    "oracle_hash",
+    "metric_hash",
+    "snapshot_hash",
+    "fixture_hash",
+    "environment_hash",
+    "runner_id",
+    "repeats",
+    "cohorts",
+    "actions",
+    "arms"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "objective": {
+            "const": "mechanism"
+          }
+        },
+        "required": [
+          "objective"
+        ]
+      },
+      "then": {
+        "properties": {
+          "policy_version": {
+            "const": "checkout_mechanism_v1"
+          },
+          "arms": {
+            "minItems": 2,
+            "maxItems": 2,
+            "allOf": [
+              {
+                "contains": {
+                  "type": "object",
+                  "properties": {
+                    "arm": {
+                      "const": "known_good"
+                    }
+                  },
+                  "required": [
+                    "arm"
+                  ]
+                },
+                "minContains": 1,
+                "maxContains": 1,
+                "type": "array"
+              },
+              {
+                "contains": {
+                  "type": "object",
+                  "properties": {
+                    "arm": {
+                      "const": "incident"
+                    }
+                  },
+                  "required": [
+                    "arm"
+                  ]
+                },
+                "minContains": 1,
+                "maxContains": 1,
+                "type": "array"
+              }
+            ],
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "objective": {
+            "const": "correction"
+          }
+        },
+        "required": [
+          "objective"
+        ]
+      },
+      "then": {
+        "properties": {
+          "policy_version": {
+            "const": "checkout_completion_v1"
+          },
+          "arms": {
+            "minItems": 3,
+            "maxItems": 3,
+            "allOf": [
+              {
+                "contains": {
+                  "type": "object",
+                  "properties": {
+                    "arm": {
+                      "const": "known_good"
+                    }
+                  },
+                  "required": [
+                    "arm"
+                  ]
+                },
+                "minContains": 1,
+                "maxContains": 1,
+                "type": "array"
+              },
+              {
+                "contains": {
+                  "type": "object",
+                  "properties": {
+                    "arm": {
+                      "const": "incident"
+                    }
+                  },
+                  "required": [
+                    "arm"
+                  ]
+                },
+                "minContains": 1,
+                "maxContains": 1,
+                "type": "array"
+              },
+              {
+                "contains": {
+                  "type": "object",
+                  "properties": {
+                    "arm": {
+                      "const": "candidate"
+                    }
+                  },
+                  "required": [
+                    "arm"
+                  ]
+                },
+                "minContains": 1,
+                "maxContains": 1,
+                "type": "array"
+              }
+            ],
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "verified_staging"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "observation_profile_hash"
+        ],
+        "properties": {
+          "observation_profile_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  ]
+}

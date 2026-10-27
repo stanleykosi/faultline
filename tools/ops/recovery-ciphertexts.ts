@@ -1,0 +1,10 @@
+import type pg from 'pg';
+import {open,type Keyring} from '../../packages/core/src/secrets/keyring.js';
+import {demand} from '../../packages/core/src/errors.js';
+export function verifyRecoveryEnvelopes(rows:readonly {ciphertext:string;aad:string}[],ring:Keyring){for(const row of rows){demand(typeof row.ciphertext==='string'&&typeof row.aad==='string','RECOVERY_CIPHERTEXT_INVALID','Recovery envelope is malformed.');open(row.ciphertext,row.aad,ring);}return rows.length;}
+export async function verifyRecoveryCiphertexts(client:pg.Client,ring:Keyring){
+ const active=(await client.query('SELECT workspace_id,id,active_version,ciphertext FROM faultline.secrets ORDER BY workspace_id,id LIMIT 10001')).rows,versions=(await client.query('SELECT workspace_id,secret_id,version,ciphertext FROM faultline.secret_versions ORDER BY workspace_id,secret_id,version LIMIT 10001')).rows,commands=(await client.query("SELECT workspace_id,principal_id,operation,result->>'encrypted' AS ciphertext FROM faultline.idempotency WHERE result ? 'encrypted' ORDER BY workspace_id,principal_id,operation,key LIMIT 10001")).rows,pending=(await client.query('SELECT token_hash,key,result_ciphertext AS ciphertext FROM auth.pending_commands ORDER BY token_hash,key LIMIT 10001')).rows;
+ demand([active,versions,commands,pending].every(rows=>rows.length<=10000),'RECOVERY_CIPHERTEXT_BOUND','Recovery ciphertext inventory exceeds the reviewed finite bound.');
+ const rows=[...active.map(row=>({ciphertext:row.ciphertext,aad:row.workspace_id+':'+row.id+':'+row.active_version})),...versions.map(row=>({ciphertext:row.ciphertext,aad:row.workspace_id+':'+row.secret_id+':'+row.version})),...commands.map(row=>({ciphertext:row.ciphertext,aad:row.workspace_id+':'+row.principal_id+':'+row.operation})),...pending.map(row=>({ciphertext:row.ciphertext,aad:'pending:'+row.token_hash+':'+row.key}))];
+ return {total:verifyRecoveryEnvelopes(rows,ring),active:active.length,versions:versions.length,commands:commands.length,pending:pending.length};
+}

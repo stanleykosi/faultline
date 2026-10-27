@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "kind": "hypotheses",
+  "revision_id": "revision-1",
+  "input_hash": "a8198524f58e72b56283ab71ebddada22840f108b46ef7165bb3fca9919c5558",
+  "hypotheses": [],
+  "draft_sentences": [],
+  "questions": [
+    "Which deployment served the affected sessions?"
+  ],
+  "limitations": [
+    "No deployment exposure is independently verified."
+  ]
+}

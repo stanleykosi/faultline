@@ -1,0 +1,8 @@
+import fs from 'node:fs/promises';import path from 'node:path';import {randomUUID}from'node:crypto';import {demand}from'../errors.js';
+export async function acquireNativeLock(root:string,kind:'runtime'|'backup'){
+ await fs.mkdir(root,{recursive:true,mode:0o700});const stat=await fs.lstat(root);demand(stat.isDirectory()&&!stat.isSymbolicLink()&&await fs.realpath(root)===path.resolve(root),'RUNNER_LOCK_PATH_INVALID','Native runner lock requires its real private state directory.');const file=path.join(root,'native-runtime.lock'),token=randomUUID(),guardPath=path.join(root,'native-runtime.lock.recovery');let handle,guard;
+ try{guard=await fs.open(guardPath,'wx',0o600);}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;demand(false,'RUNNER_NOT_QUIESCED','Native lock admission or explicit recovery is active; retry after review.');}
+ try{
+ try{handle=await fs.open(file,'wx',0o600);}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;demand(false,'RUNNER_NOT_QUIESCED','A native runner or offline maintenance lock exists; alive or stale state requires explicit offline review.');}
+ demand(handle,'RUNNER_LOCK_UNAVAILABLE','Native maintenance lock could not be acquired.');await handle.writeFile(JSON.stringify({pid:process.pid,kind,token,at:new Date().toISOString()})+'\n');await handle.sync();}finally{if(guard){await guard.close();await fs.unlink(guardPath);}}return {async release(){await handle.close();try{const old=JSON.parse(await fs.readFile(file,'utf8'));demand(old.token===token,'RUNNER_LOCK_CHANGED','Native maintenance lock changed.');await fs.unlink(file);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}};
+}

@@ -1,0 +1,15 @@
+{
+  "basis": "operator_attestation",
+  "event_time_intervals": [
+    {
+      "start": "2026-09-01T00:00:00.000Z",
+      "end": "2026-09-03T00:30:00.000Z"
+    }
+  ],
+  "declared_event_watermark": "2026-09-03T00:30:00.000Z",
+  "statement": "This synthetic fixture is complete by construction; not external source evidence.",
+  "reference_evidence_ids": [
+    "evidence-1"
+  ],
+  "late_arrival_hours": 0
+}

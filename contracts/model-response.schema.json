@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/model-response.schema.json",
+  "title": "Faultline model-response",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "hypotheses",
+        "critique",
+        "diagnosis_draft"
+      ]
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "input_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "supporting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+            },
+            "minItems": 0,
+            "maxItems": 20
+          },
+          "contradicting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+            },
+            "minItems": 0,
+            "maxItems": 20
+          },
+          "missing_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "minItems": 0,
+            "maxItems": 10
+          },
+          "falsifier": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "proposed_test_kinds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "data_quality",
+                "cohort_change",
+                "mix_shift",
+                "temporal_alignment",
+                "negative_control",
+                "mechanism"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 5
+          }
+        },
+        "required": [
+          "title",
+          "statement",
+          "supporting_evidence_ids",
+          "contradicting_evidence_ids",
+          "missing_evidence",
+          "falsifier",
+          "proposed_test_kinds"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 5
+    },
+    "draft_sentences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+            },
+            "minItems": 0,
+            "maxItems": 20
+          },
+          "qualification": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "hypothesis",
+              "limitation",
+              "next_step"
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "evidence_ids",
+          "qualification"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 30
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "minItems": 0,
+      "maxItems": 10
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "minItems": 0,
+      "maxItems": 20
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "revision_id",
+    "input_hash",
+    "hypotheses",
+    "draft_sentences",
+    "questions",
+    "limitations"
+  ]
+}

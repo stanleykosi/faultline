@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {checkedUrl,publicAddress} from './http.js';
+test('public transport rejects private, mapped loopback and multicast addresses',()=>{for(const ip of ['127.0.0.1','0.0.0.0','10.0.0.1','172.16.0.1','192.168.1.2','169.254.169.254','100.64.0.1','224.0.0.1','::1','fc00::1','fe80::1','::ffff:127.0.0.1','2001:db8::1'])assert.equal(publicAddress(ip),false,ip);assert.equal(publicAddress('1.1.1.1'),true);});
+test('provider URL must remain within exact operator origins and exclude credentials/ports/fragments',()=>{const origins=['https://api.github.com'];assert.equal(checkedUrl('https://api.github.com/repos/a/b',origins).origin,origins[0]);for(const url of ['http://api.github.com','https://api.github.com.evil.test','https://user:secret@api.github.com','https://api.github.com:8443','https://api.github.com/#token','https://127.0.0.1','https://localhost'])assert.throws(()=>checkedUrl(url,origins));});
+

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm contracts:generate && pnpm build:web",
+  "outputDirectory": "dist/web",
+  "rewrites": [
+    {
+      "source": "/api",
+      "destination": "https://your-faultline-api.invalid/api"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://your-faultline-api.invalid/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

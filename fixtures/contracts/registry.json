@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "id": "metric",
+      "schema": "contracts/metric.schema.json",
+      "fixture": "fixtures/contracts/metric.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "canonical-event",
+      "schema": "contracts/canonical-event.schema.json",
+      "fixture": "fixtures/contracts/canonical-event.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "coverage",
+      "schema": "contracts/coverage.schema.json",
+      "fixture": "fixtures/contracts/coverage.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "snapshot",
+      "schema": "contracts/snapshot.schema.json",
+      "fixture": "fixtures/contracts/snapshot.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "evidence",
+      "schema": "contracts/evidence.schema.json",
+      "fixture": "fixtures/contracts/evidence.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "hypothesis",
+      "schema": "contracts/hypothesis.schema.json",
+      "fixture": "fixtures/contracts/hypothesis.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "browser-plan",
+      "schema": "contracts/browser-plan.schema.json",
+      "fixture": "fixtures/contracts/browser-plan.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "oracle",
+      "schema": "contracts/oracle.schema.json",
+      "fixture": "fixtures/contracts/oracle.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "analytic-plan",
+      "schema": "contracts/analytic-plan.schema.json",
+      "fixture": "fixtures/contracts/analytic-plan.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "observation",
+      "schema": "contracts/observation.schema.json",
+      "fixture": "fixtures/contracts/observation.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "verification-result",
+      "schema": "contracts/verification-result.schema.json",
+      "fixture": "fixtures/contracts/verification-result.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "claim",
+      "schema": "contracts/claim.schema.json",
+      "fixture": "fixtures/contracts/claim.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "model-response",
+      "schema": "contracts/model-response.schema.json",
+      "fixture": "fixtures/contracts/model-response.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "connector-capabilities",
+      "schema": "contracts/connector-capabilities.schema.json",
+      "fixture": "fixtures/contracts/connector-capabilities.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "report",
+      "schema": "contracts/report.schema.json",
+      "fixture": "fixtures/contracts/report.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "release-manifest",
+      "schema": "contracts/release-manifest.schema.json",
+      "fixture": "fixtures/contracts/release-manifest.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "target-grant",
+      "schema": "contracts/target-grant.schema.json",
+      "fixture": "fixtures/contracts/target-grant.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "approval",
+      "schema": "contracts/approval.schema.json",
+      "fixture": "fixtures/contracts/approval.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "job",
+      "schema": "contracts/job.schema.json",
+      "fixture": "fixtures/contracts/job.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "metric-result",
+      "schema": "contracts/metric-result.schema.json",
+      "fixture": "fixtures/contracts/metric-result.example.json",
+      "meaning": "Synthetic structural example, not application execution"
+    },
+    {
+      "id": "mechanism-plan",
+      "schema": "contracts/browser-plan.schema.json",
+      "fixture": "fixtures/contracts/mechanism-plan.example.json",
+      "meaning": "Synthetic mechanism-only policy example"
+    },
+    {
+      "id": "mechanism-oracle",
+      "schema": "contracts/oracle.schema.json",
+      "fixture": "fixtures/contracts/mechanism-oracle.example.json",
+      "meaning": "Synthetic mechanism-only policy example"
+    },
+    {
+      "id": "coverage-declaration",
+      "schema": "contracts/coverage-declaration.schema.json",
+      "fixture": "fixtures/contracts/coverage-declaration.example.json",
+      "meaning": "Synthetic structural example; public key is not a production trust root."
+    },
+    {
+      "id": "observation-profile",
+      "schema": "contracts/observation-profile.schema.json",
+      "fixture": "fixtures/contracts/observation-profile.example.json",
+      "meaning": "Synthetic structural example; public key is not a production trust root."
+    },
+    {
+      "id": "agent-response",
+      "schema": "contracts/agent-response.schema.json",
+      "fixture": "fixtures/contracts/agent-response.example.json",
+      "meaning": "Synthetic structured agent draft, not deterministic verification truth"
+    },
+    {
+      "id": "build-attestation",
+      "schema": "contracts/build-attestation.schema.json",
+      "fixture": "fixtures/contracts/build-attestation.example.json",
+      "meaning": "Synthetic structural example; public key is not a production trust root."
+    }
+  ]
+}

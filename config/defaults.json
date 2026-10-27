@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "limits": {
+    "jsonApiBytes": 1048576,
+    "sourceFileBytes": 52428800,
+    "sourceExpandedBytes": 268435456,
+    "sourceFilesPerCapture": 100,
+    "sourceRecords": 100000,
+    "jsonDepth": 32,
+    "csvFieldBytes": 1048576,
+    "caseStorageBytes": 1073741824,
+    "listPageDefault": 50,
+    "listPageMax": 200,
+    "maxCohorts": 8,
+    "maxPeriodDays": 31,
+    "evidenceArtifactBytes": 10485760,
+    "imageMaxPixels": 20000000,
+    "maxRecordBytes": 262144
+  },
+  "ai": {
+    "maxCalls": 24,
+    "maxOwnerGrantedCalls": 4,
+    "maxInputTokens": 500000,
+    "maxOutputTokens": 64000,
+    "callTimeoutSeconds": 90,
+    "maxSchemaRepairAttempts": 1,
+    "maxHypotheses": 5,
+    "maxProposedTests": 8,
+    "budgetScope": "investigation_revision",
+    "maxSelectedEvidenceBytes": 32768,
+    "maxRawResponseBytes": 131072,
+    "maxConcurrentPerWorkspace": 1,
+    "maxConcurrentPerWorker": 2
+  },
+  "runner": {
+    "taskTimeoutSeconds": 600,
+    "maxPerWorkspace": 1,
+    "maxPerRunner": 2,
+    "cpuLimit": 2,
+    "memoryMiB": 2048,
+    "cancelAcknowledgeSeconds": 2,
+    "forcedKillAfterGraceSeconds": 10,
+    "repeatsPerCell": 3,
+    "maxMatrixCells": 6,
+    "maxActionsPerCell": 30,
+    "maxArtifactBytes": 104857600
+  },
+  "metric": {
+    "template": "session_conversion_v1",
+    "unit": "session",
+    "horizonSeconds": 1800,
+    "timezone": "UTC",
+    "standardPopulation": "baseline"
+  },
+  "product": {
+    "anonymousSignup": false,
+    "billing": false,
+    "automaticPaidExports": false,
+    "externalMessages": false,
+    "autonomousProductionMutation": false,
+    "defaultModelProvider": "none",
+    "supportedSources": [
+      "csv",
+      "json",
+      "jsonl",
+      "posthog_existing_file_export",
+      "github_changes"
+    ]
+  },
+  "jobs": {
+    "maxExpensivePerWorkspace": 1,
+    "maxPerWorker": 2,
+    "retryAttempts": 3,
+    "initialRetryDelaySeconds": 2,
+    "maxRetryDelaySeconds": 60,
+    "activeRunDeadlineSeconds": 1800,
+    "cancellationPollSeconds": 2,
+    "workerCancelGraceSeconds": 5,
+    "outboxPollMilliseconds": 1000,
+    "leaseSeconds": 60,
+    "leaseHeartbeatSeconds": 15
+  },
+  "connectors": {
+    "maxConcurrentPerSource": 2,
+    "posthog": {
+      "maxConcurrentPerProject": 1,
+      "maxSelectedRuns": 20
+    },
+    "github": {
+      "pageSize": 100,
+      "maxPagesPerResource": 50
+    }
+  },
+  "retention": {
+    "rawUploadDays": 30,
+    "canonicalEventDays": 180,
+    "attachmentDays": 90,
+    "reportDays": 365,
+    "auditDays": 365,
+    "deletedCaseGraceDays": 7
+  },
+  "eventProfile": {
+    "enabled": false,
+    "meterlessMaxEligibleCapsules": 200,
+    "meterlessTopK": 5,
+    "zetarisMaxPages": 50,
+    "zetarisMaxRows": 5000
+  }
+}

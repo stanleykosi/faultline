@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/connector-capabilities.schema.json",
+  "title": "Faultline connector-capabilities",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source_kind": {
+      "type": "string",
+      "enum": [
+        "posthog_existing_file_export",
+        "github_changes",
+        "local_file",
+        "model",
+        "runner",
+        "zetaris_federated_evidence"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unconfigured",
+        "available",
+        "unavailable",
+        "unauthorized",
+        "unsupported"
+      ]
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "adapter_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "read_only": {
+      "type": "boolean"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "minItems": 0,
+      "maxItems": 30
+    },
+    "unsupported_features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "minItems": 0,
+      "maxItems": 30
+    },
+    "reason_code": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "provider_version": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "source_kind",
+    "status",
+    "checked_at",
+    "adapter_version",
+    "read_only",
+    "features",
+    "unsupported_features",
+    "reason_code",
+    "provider_version"
+  ]
+}

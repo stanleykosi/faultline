@@ -1,0 +1,23 @@
+{
+  "outcome": "passed",
+  "association": "not_established",
+  "mechanism": "reproduced",
+  "correction": "validated",
+  "freshness": "fresh",
+  "attribution": {
+    "scope": "association_only",
+    "causal_effect": "not_established"
+  },
+  "reasons": [],
+  "expected_runs": 18,
+  "observed_runs": 18,
+  "plan_hash": "cff011d66ad47f7e665373ff688ab10d81e35c6c0816b346c43e210bb09e6af0",
+  "mode": "trusted_fixture",
+  "production_claim_eligible": false,
+  "workspace_id": "workspace-fixture",
+  "case_id": "case-fixture",
+  "revision_id": "revision-1",
+  "hypothesis_id": "hyp-mobile-handler",
+  "metric_hash": "25e88e0d2448f070ea12b1afb686989a5f00133ff2fdcbe65f838492bcc508ca",
+  "snapshot_hash": "b7b74494ec2dce465235f90dee685bc18212591b2fb13e521722d2435f927d35"
+}

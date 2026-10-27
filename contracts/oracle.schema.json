@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faultline.invalid/contracts/oracle.schema.json",
+  "title": "Faultline oracle",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": [
+        "checkout_mechanism_v1",
+        "checkout_completion_v1"
+      ]
+    },
+    "arms": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "known_good",
+          "incident",
+          "candidate"
+        ]
+      },
+      "minItems": 2,
+      "maxItems": 3
+    },
+    "cohorts": {
+      "const": [
+        "mobile",
+        "desktop"
+      ]
+    },
+    "repeats": {
+      "const": 3
+    },
+    "assertions": {
+      "const": [
+        "checkout_completed",
+        "order_created_count",
+        "error_code"
+      ]
+    },
+    "required_controls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "known_good_mobile",
+          "known_good_desktop",
+          "incident_desktop",
+          "candidate_desktop"
+        ]
+      },
+      "minItems": 3,
+      "maxItems": 4
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "required": [
+    "version",
+    "arms",
+    "cohorts",
+    "repeats",
+    "assertions",
+    "required_controls",
+    "scope"
+  ]
+}
